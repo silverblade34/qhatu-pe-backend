@@ -15,14 +15,6 @@ export class UsersController {
     private readonly profileService: UserProfileService,
   ) {}
 
-  // ENDPOINT PÚBLICO - Ver tienda pública
-  @Public()
-  @Get('store/:username')
-  @ApiOperation({ summary: 'Obtener tienda pública por username' })
-  async getPublicStore(@Param('username') username: string) {
-    return this.profileService.getPublicStore(username);
-  }
-
   // ENDPOINT PROTEGIDO - Ver mi perfil completo
   @UseGuards(JwtAuthGuard)
   @Get('profile')

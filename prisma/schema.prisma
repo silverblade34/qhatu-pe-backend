@@ -97,6 +97,7 @@ model User {
   // Relaciones
   storeProfile      StoreProfile?
   products          Product[]
+  productCategories ProductCategory[]
   orders            Order[]
   coupons           Coupon[]
   reviews           Review[]       @relation("SellerReviews")
@@ -111,27 +112,24 @@ model StoreProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Información de la tienda
+
   storeName   String
   bio         String?  @db.Text
   logo        String?
   banner      String?
   phone       String?
-  
-  // Estado
+
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+
   isActive    Boolean  @default(true)
-  
-  // Badges/insignias
   badges      String[] @default([])
-  
-  // Timestamps
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  // Relaciones
+
   socialLinks SocialLink[]
-  
+
   @@map("store_profiles")
 }
 
@@ -148,19 +146,32 @@ model SocialLink {
   @@map("social_links")
 }
 
+model Category {
+  id             String         @id @default(cuid())
+  name           String         @unique
+  description    String?
+
+  storeProfiles  StoreProfile[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("categories")
+}
+
 // ============================================
 // PRODUCTS & CATALOG
 // ============================================
 
-model Category {
+model ProductCategory {
   id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String    // "Polos", "Pantalones", "Zapatillas"
+  slug        String
   description String?
-  icon        String?
-  parentId    String?
-  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
+  icon        String?   // emoji o url de icono
+  order       Int       @default(0) // Para ordenar las categorías
   
   // Relaciones
   products    Product[]
@@ -168,8 +179,9 @@ model Category {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-  @@index([slug])
-  @@map("categories")
+  @@unique([userId, slug]) // Slug único por vendedor
+  @@index([userId])
+  @@map("product_categories")
 }
 
 model Product {
@@ -186,15 +198,18 @@ model Product {
   stock       Int      @default(0)
   lowStockThreshold Int @default(5)
   
-  // Categoría
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
+  // Categoría del producto (personalizada por vendedor)
+  categoryId  String?
+  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   
-  // Estado
+  // Estado y features especiales
   isActive    Boolean  @default(true)
+  isFlashSale Boolean  @default(false)  // Oferta flash
+  isFeatured  Boolean  @default(false)  // Destacado
+  isComingSoon Boolean @default(false)  // Próximamente
   
   // SEO
-  slug        String   @unique
+  slug        String
   
   // Timestamps
   createdAt   DateTime @default(now())
@@ -204,10 +219,11 @@ model Product {
   images      ProductImage[]
   variants    ProductVariant[]
   orderItems  OrderItem[]
-  
+  reviews     Review[]         @relation("ProductReviews")
+
+  @@unique([userId, slug]) // Slug único por vendedor
   @@index([userId])
   @@index([categoryId])
-  @@index([slug])
   @@index([isActive])
   @@map("products")
 }
@@ -222,7 +238,7 @@ model ProductImage {
   order       Int      @default(0)
   
   createdAt   DateTime @default(now())
-  
+  isPrimary   Boolean  @default(false)
   @@index([productId])
   @@map("product_images")
 }
@@ -232,14 +248,14 @@ model ProductVariant {
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
-  // Ej: "Talla: M, Color: Rojo"
-  name        String   // "M - Rojo"
+  // Ej: "M - Rojo"
+  name        String
   sku         String?  @unique
   price       Float?   // Precio específico (opcional)
   stock       Int      @default(0)
   
-  // Atributos como JSON
-  attributes  Json     // { "talla": "M", "color": "Rojo" }
+  // Atributos como JSON: { "talla": "M", "color": "Rojo" }
+  attributes  Json
   
   isActive    Boolean  @default(true)
   
@@ -339,7 +355,7 @@ model Coupon {
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // Código del cupón
-  code            String        @unique
+  code            String
   
   // Tipo de descuento
   discountType    DiscountType
@@ -350,6 +366,9 @@ model Coupon {
   maxDiscount     Float?        // Descuento máximo (útil para porcentajes)
   usageLimit      Int?          // Límite de usos
   usageCount      Int           @default(0)
+  
+  // Productos específicos (opcional)
+  productIds      String[]      @default([]) // IDs de productos donde aplica
   
   // Validez
   startDate       DateTime
@@ -365,8 +384,8 @@ model Coupon {
   // Relaciones
   orders          Order[]
   
+  @@unique([userId, code]) // Código único por vendedor
   @@index([userId])
-  @@index([code])
   @@index([status])
   @@map("coupons")
 }
@@ -377,6 +396,9 @@ model Coupon {
 
 model Review {
   id              String   @id @default(cuid())
+  
+  productId       String?
+  product         Product? @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
   
   // Vendedor calificado
   sellerId        String
@@ -394,6 +416,7 @@ model Review {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
+  @@index([productId])
   @@index([sellerId])
   @@index([customerId])
   @@map("reviews")

@@ -115,6 +115,7 @@ export class StoresService {
         storeName: store.storeProfile.storeName,
         bio: store.storeProfile.bio,
         logo: store.storeProfile.logo,
+        banner: store.storeProfile.banner,
         isVerified: store.isVerified,
         badges: store.storeProfile.badges,
         rating: {

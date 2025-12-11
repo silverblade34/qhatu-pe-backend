@@ -1,96 +1,91 @@
-import {
-  IsString,
-  IsNumber,
-  IsArray,
-  IsOptional,
-  IsBoolean,
-  IsEnum,
-  Min,
+import { 
+  IsString, 
+  IsNumber, 
+  IsArray, 
+  IsOptional, 
+  Min, 
   MaxLength,
-  IsUrl,
   ValidateNested,
+  IsObject
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-enum ProductCategory {
-  ROPA = 'ROPA',
-  BELLEZA = 'BELLEZA',
-  TECNOLOGIA = 'TECNOLOGIA',
-  HOGAR = 'HOGAR',
-  ACCESORIOS = 'ACCESORIOS',
-  OTRO = 'OTRO',
-}
-
-class VariantDto {
-  @ApiProperty({ example: 'SIZE' })
+export class CreateVariantDto {
+  @ApiProperty({ example: 'M - Rojo', description: 'Nombre de la variante' })
   @IsString()
-  type: string;
+  name: string;
 
-  @ApiProperty({ example: 'M' })
+  @ApiPropertyOptional({ example: 'SKU-001', description: 'SKU único' })
+  @IsOptional()
   @IsString()
-  value: string;
+  sku?: string;
 
-  @ApiProperty({ example: 10 })
+  @ApiPropertyOptional({ example: 45.50, description: 'Precio específico de la variante' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @ApiProperty({ example: 10, description: 'Stock disponible' })
   @IsNumber()
   @Min(0)
   stock: number;
 
-  @ApiProperty({ example: 0, required: false })
-  @IsOptional()
-  @IsNumber()
-  priceModifier?: number;
+  @ApiProperty({
+    example: { talla: 'M', color: 'Rojo' },
+    description: 'Atributos de la variante' 
+  })
+  @IsObject()
+  attributes: Record<string, string>;
 }
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'Polo Oversize Negro' })
+  @ApiProperty({ example: 'Polo Oversize Negro', maxLength: 200 })
   @IsString()
   @MaxLength(200)
   name: string;
 
-  @ApiProperty({ example: 'Polo de algodón 100% peruano...' })
+  @ApiProperty({ example: 'Polo 100% algodón, diseño moderno' })
   @IsString()
-  @MaxLength(500)
+  @MaxLength(2000)
   description: string;
 
-  @ApiProperty({ enum: ProductCategory, example: 'ROPA' })
-  @IsEnum(ProductCategory)
-  category: ProductCategory;
+  @ApiPropertyOptional({ 
+    example: 'clxxxxxx', 
+    description: 'ID de la categoría de producto (opcional, categorías personalizadas del vendedor)' 
+  })
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 
-  @ApiProperty({ example: 45.0 })
+  @ApiProperty({ example: 45.00, minimum: 0 })
   @IsNumber()
   @Min(0)
   price: number;
 
-  @ApiProperty({ example: 20 })
+  @ApiProperty({ example: 50, minimum: 0 })
   @IsNumber()
   @Min(0)
   stock: number;
 
-  @ApiProperty({ example: ['https://...', 'https://...'] })
+  @ApiProperty({ 
+    example: ['https://ejemplo.com/imagen1.jpg', 'https://ejemplo.com/imagen2.jpg'],
+    description: 'URLs de las imágenes (máximo 5)',
+    type: [String]
+  })
   @IsArray()
-  @IsUrl({}, { each: true })
+  @IsString({ each: true })
   images: string[];
 
-  @ApiProperty({ type: [VariantDto], required: false })
+  @ApiPropertyOptional({ 
+    type: [CreateVariantDto],
+    description: 'Variantes del producto (tallas, colores, etc.)'
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => VariantDto)
-  variants?: VariantDto[];
-
-  @ApiProperty({ example: false, required: false })
-  @IsOptional()
-  @IsBoolean()
-  isFlashSale?: boolean;
-
-  @ApiProperty({ example: false, required: false })
-  @IsOptional()
-  @IsBoolean()
-  isFeatured?: boolean;
-
-  @ApiProperty({ example: false, required: false })
-  @IsOptional()
-  @IsBoolean()
-  isComingSoon?: boolean;
+  @Type(() => CreateVariantDto)
+  variants?: CreateVariantDto[];
 }
+

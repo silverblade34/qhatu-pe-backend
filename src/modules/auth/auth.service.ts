@@ -92,7 +92,6 @@ export class AuthService {
       message: '¡Tienda creada exitosamente! Bienvenido a Qhatu.pe',
       user: this.sanitizeUser(user),
       storeUrl: `https://qhatu.pe/${user.username}`,
-      category: category.name,
       ...tokens,
     };
   }
@@ -144,16 +143,9 @@ export class AuthService {
         fullName,
         phone: '', // Opcional para clientes
         plan: 'BASIC',
+        avatar: avatarUrl,
         role: 'SELLER', // Los clientes también son SELLER pero sin tienda activa
         isVerified: false,
-        storeProfile: {
-          create: {
-            storeName: '',
-            bio: '',
-            logo: avatarUrl,
-            isActive: false,
-          },
-        },
       },
     });
 
@@ -168,13 +160,11 @@ export class AuthService {
 
   // REGISTRO RÁPIDO CON GOOGLE
   async quickRegisterWithGoogle(quickRegisterDto: QuickRegisterDto) {
-    // 1. Verificar si ya existe
     let user = await this.prisma.user.findUnique({
       where: { email: quickRegisterDto.email.toLowerCase() },
     });
 
     if (user) {
-      // Ya existe, solo hacer login
       const tokens = await this.generateTokens(user.id, user.username, user.role);
       return {
         message: 'Inicio de sesión exitoso',
@@ -183,30 +173,27 @@ export class AuthService {
       };
     }
 
-    // 2. Generar username único
     const username = await this.generateUniqueUsername(quickRegisterDto.email);
 
     let avatarUrl: string;
     if (quickRegisterDto.picture) {
       avatarUrl = quickRegisterDto.picture;
     } else {
-      // Generar avatar aleatorio del catálogo
       const randomAvatar = this.avatarService.getRandomAvatar();
       avatarUrl = randomAvatar?.url || await this.avatarService.generateAndUploadInitialsAvatar(quickRegisterDto.fullName);
     }
 
-    // 4. Crear usuario (sin password porque usa Google)
     user = await this.prisma.user.create({
       data: {
         email: quickRegisterDto.email.toLowerCase(),
         username,
-        password: '', // Sin password, usa OAuth
+        password: '',
         fullName: quickRegisterDto.fullName,
         phone: '',
         plan: 'BASIC',
         role: 'SELLER',
         avatar: avatarUrl,
-        isVerified: true, // Google ya verificó el email
+        isVerified: true,
       },
     });
 
