@@ -13,7 +13,7 @@ interface SearchStoresParams {
 
 @Injectable()
 export class StoresService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async searchStores(params: SearchStoresParams) {
     const { query, category, verified, hasOffers, sort, page, limit } = params;
@@ -300,30 +300,25 @@ export class StoresService {
     });
   }
 
-  async getStoresByCategory(categorySlug: string, options: { page: number; limit: number }) {
+  async getStoresByCategory(categoryId: string, options: { page: number; limit: number }) {
     const { page, limit } = options;
     const skip = (page - 1) * limit;
 
     // Verificar que la categoría existe
     const category = await this.prisma.category.findUnique({
-      where: { slug: categorySlug },
+      where: { id: categoryId },
     });
 
     if (!category) {
       throw new NotFoundException('Categoría no encontrada');
     }
 
-    // Obtener tiendas que tienen productos en esta categoría
+    // Obtener tiendas que tienen esta categoría
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where: {
-          products: {
-            some: {
-              categoryId: category.id,
-              isActive: true,
-            },
-          },
           storeProfile: {
+            categoryId: category.id,
             isActive: true,
           },
         },
@@ -340,13 +335,6 @@ export class StoresService {
               badges: true,
             },
           },
-          products: {
-            where: {
-              categoryId: category.id,
-              isActive: true,
-            },
-            select: { id: true },
-          },
           reviews: {
             select: { rating: true },
           },
@@ -354,13 +342,8 @@ export class StoresService {
       }),
       this.prisma.user.count({
         where: {
-          products: {
-            some: {
-              categoryId: category.id,
-              isActive: true,
-            },
-          },
           storeProfile: {
+            categoryId: category.id,
             isActive: true,
           },
         },
@@ -380,7 +363,6 @@ export class StoresService {
         isVerified: user.isVerified,
         badges: user.storeProfile.badges,
         rating: Math.round(avgRating * 10) / 10,
-        totalProducts: user.products.length,
         url: `https://qhatu.pe/${user.username}`,
       };
     });
@@ -388,8 +370,6 @@ export class StoresService {
     return {
       category: {
         name: category.name,
-        slug: category.slug,
-        icon: category.icon,
       },
       stores,
       pagination: {

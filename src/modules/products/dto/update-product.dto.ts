@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateVariantDto } from './create-product.dto';
+import { CreateVariantDto } from './create-variant.dto';
 
 export class UpdateProductDto {
   @ApiPropertyOptional({ example: 'Polo Oversize Negro', maxLength: 200 })

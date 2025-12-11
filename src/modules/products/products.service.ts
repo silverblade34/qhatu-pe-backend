@@ -46,11 +46,7 @@ export class ProductsService {
         name: createProductDto.name,
         slug,
         description: createProductDto.description,
-        ...(createProductDto.categoryId && {
-          category: {
-            connect: { id: createProductDto.categoryId },
-          },
-        }),
+        categoryId: createProductDto.categoryId,
         price: createProductDto.price,
         stock: createProductDto.stock,
         isActive: true,
@@ -123,7 +119,6 @@ export class ProductsService {
         name: updateProductDto.name,
         slug,
         description: updateProductDto.description,
-        // ✅ Conectar o desconectar categoría
         ...(updateProductDto.categoryId !== undefined && {
           category: updateProductDto.categoryId
             ? { connect: { id: updateProductDto.categoryId } }
@@ -222,12 +217,7 @@ export class ProductsService {
         name: `${product.name} (Copia)`,
         slug: newSlug,
         description: product.description,
-        // ✅ Conectar categoría si existe
-        ...(product.categoryId && {
-          category: {
-            connect: { id: product.categoryId },
-          },
-        }),
+        categoryId: product.categoryId,
         price: product.price,
         stock: product.stock,
         isFlashSale: false,
@@ -241,7 +231,6 @@ export class ProductsService {
             isPrimary: img.isPrimary,
           })),
         },
-        // ✅ Crear variantes con campos correctos
         variants: {
           create: product.variants.map((variant) => ({
             name: variant.name,
@@ -269,7 +258,7 @@ export class ProductsService {
       include: {
         images: { orderBy: { order: 'asc' } },
         variants: true,
-        category: true, // ✅ Incluir categoría
+        category: true,
       },
     });
 
@@ -302,7 +291,7 @@ export class ProductsService {
       include: {
         images: { orderBy: { order: 'asc' } },
         variants: true,
-        category: true, // ✅ Incluir categoría
+        category: true,
         reviews: {
           include: {
             customer: {
@@ -381,7 +370,7 @@ export class ProductsService {
       where,
       include: {
         images: { orderBy: { order: 'asc' }, take: 1 },
-        category: true, // ✅ Incluir categoría
+        category: true,
       },
       orderBy: { createdAt: 'desc' },
       take: filters.limit || 20,
@@ -425,7 +414,7 @@ export class ProductsService {
       where,
       include: {
         images: { orderBy: { order: 'asc' }, take: 1 },
-        category: true, // ✅ Incluir categoría
+        category: true,
         _count: {
           select: { orderItems: true },
         },

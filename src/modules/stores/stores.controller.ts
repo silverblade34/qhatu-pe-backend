@@ -56,14 +56,14 @@ export class StoresController {
 
   // OBTENER TIENDAS POR CATEGORÍA
   @Public()
-  @Get('category/:slug')
+  @Get('category/:id')
   @ApiOperation({ summary: 'Obtener tiendas por categoría' })
   async getStoresByCategory(
-    @Param('slug') slug: string,
+    @Param('id') categoryId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.storesService.getStoresByCategory(slug, {
+    return this.storesService.getStoresByCategory(categoryId, {
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 12,
     });

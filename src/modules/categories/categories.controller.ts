@@ -20,14 +20,6 @@ export class CategoriesController {
     return this.categoriesService.findAll();
   }
 
-  // PÚBLICO - Obtener una categoría por slug
-  @Public()
-  @Get('slug/:slug')
-  @ApiOperation({ summary: 'Obtener categoría por slug' })
-  async getCategoryBySlug(@Param('slug') slug: string) {
-    return this.categoriesService.findBySlug(slug);
-  }
-
   // PÚBLICO - Obtener estadísticas de categoría (cuántas tiendas hay)
   @Public()
   @Get(':id/stats')

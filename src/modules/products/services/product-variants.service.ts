@@ -1,24 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-
-interface VariantDto {
-  type: string; // 'SIZE' | 'COLOR'
-  value: string;
-  stock: number;
-  priceModifier?: number;
-}
+import { CreateVariantDto } from '../dto/create-variant.dto';
 
 @Injectable()
 export class ProductVariantsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async createVariants(productId: string, variants: VariantDto[]) {
+  async createVariants(productId: string, variants: CreateVariantDto[]) {
     const variantsData = variants.map((variant) => ({
       productId,
-      type: variant.type,
-      value: variant.value,
+      name: variant.name,
+      sku: variant.sku,
+      price: variant.price,
       stock: variant.stock,
-      priceModifier: variant.priceModifier || 0,
+      attributes: variant.attributes,
+      isActive: true,
     }));
 
     return this.prisma.productVariant.createMany({
@@ -29,7 +25,7 @@ export class ProductVariantsService {
   async getVariantsByProduct(productId: string) {
     return this.prisma.productVariant.findMany({
       where: { productId },
-      orderBy: { type: 'asc' },
+      orderBy: { name: 'asc' },
     });
   }
 

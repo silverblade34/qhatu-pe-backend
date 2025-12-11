@@ -48,41 +48,31 @@ async function main() {
     prisma.category.create({
       data: {
         name: 'Ropa',
-        slug: 'ropa',
         description: 'Prendas de vestir',
-        icon: '👕',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Tecnología',
-        slug: 'tecnologia',
         description: 'Dispositivos electrónicos',
-        icon: '💻',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Hogar',
-        slug: 'hogar',
         description: 'Artículos para el hogar',
-        icon: '🏠',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Alimentos',
-        slug: 'alimentos',
         description: 'Comida y bebidas',
-        icon: '🍕',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Accesorios',
-        slug: 'accesorios',
         description: 'Complementos y accesorios',
-        icon: '👜',
       },
     }),
   ]);
