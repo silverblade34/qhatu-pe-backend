@@ -45,7 +45,7 @@ export class ProductsController {
     return this.productsService.getProductBySlug(username, slug);
   }
 
-  // ENDPOINT PROTEGIDO - Mis productos (dashboard)
+  // ENDPOINT PROTEGIDO - Mis productos
   @UseGuards(JwtAuthGuard)
   @Get('my-products')
   @ApiBearerAuth()
@@ -115,34 +115,5 @@ export class ProductsController {
   @ApiOperation({ summary: 'Obtener productos con stock bajo' })
   async getLowStockProducts(@CurrentUser() user: any) {
     return this.productsService.getLowStockProducts(user.id);
-  }
-
-  @Public()
-  @Post('store/:username/:slug/whatsapp-message')
-  @ApiOperation({ summary: 'Generar mensaje de WhatsApp para pedido' })
-  async generateWhatsAppMessage(
-    @Param('username') username: string,
-    @Param('slug') slug: string,
-    @Body() body: {
-      variantId?: string;
-      couponCode?: string;
-    }
-  ) {
-    return this.productsService.generateWhatsAppMessage(
-      username,
-      slug,
-      body.variantId,
-      body.couponCode
-    );
-  }
-
-  @Public()
-  @Post('store/:username/validate-coupon')
-  @ApiOperation({ summary: 'Validar cupón de descuento' })
-  async validateCoupon(
-    @Param('username') username: string,
-    @Body() body: { code: string; productIds: string[] }
-  ) {
-    return this.productsService.validateCoupon(username, body.code, body.productIds);
   }
 }
