@@ -9,6 +9,8 @@ import { StoresModule } from './modules/stores/stores.module';
 import { AvatarModule } from './modules/avatar/avatar.module';
 import { ProductCategoriesModule } from './modules/product-categories/product-categories.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import awsConfig from './config/aws.config';
@@ -31,6 +33,8 @@ import minioConfig from './config/minio.config';
     AvatarModule,
     ProductCategoriesModule,
     UploadModule,
+    OrdersModule,
+    CouponsModule,
   ],
 })
 export class AppModule {}
