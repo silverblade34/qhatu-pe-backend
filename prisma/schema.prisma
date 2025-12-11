@@ -1,0 +1,400 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUM TYPES
+// ============================================
+
+enum Plan {
+  BASIC
+  PRO
+  PREMIUM
+}
+
+enum Role {
+  SELLER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING      // Esperando confirmación
+  CONFIRMED    // Confirmado por vendedor
+  PREPARING    // Preparando pedido
+  READY        // Listo para entrega/envío
+  DELIVERED    // Entregado
+  CANCELLED    // Cancelado
+}
+
+enum PaymentMethod {
+  YAPE
+  PLIN
+  BANK_TRANSFER
+  CASH
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponStatus {
+  ACTIVE
+  EXPIRED
+  DISABLED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  fullName  String
+  phone     String
+  avatar        String?
+
+  // Plan de suscripción
+  plan              Plan     @default(BASIC)
+  planExpiresAt     DateTime?
+  
+  // Verificación
+  isVerified        Boolean  @default(false)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  
+  // Role
+  role              Role     @default(SELLER)
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relaciones
+  storeProfile      StoreProfile?
+  products          Product[]
+  orders            Order[]
+  coupons           Coupon[]
+  reviews           Review[]       @relation("SellerReviews")
+  receivedReviews   Review[]       @relation("CustomerReviews")
+  
+  @@index([username])
+  @@index([email])
+  @@map("users")
+}
+
+model StoreProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información de la tienda
+  storeName   String
+  bio         String?  @db.Text
+  logo        String?
+  banner      String?
+  phone       String?
+  
+  // Estado
+  isActive    Boolean  @default(true)
+  
+  // Badges/insignias
+  badges      String[] @default([])
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  socialLinks SocialLink[]
+  
+  @@map("store_profiles")
+}
+
+model SocialLink {
+  id              String       @id @default(cuid())
+  storeProfileId  String
+  storeProfile    StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
+  
+  platform        String       // INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP
+  url             String
+  
+  createdAt       DateTime     @default(now())
+  
+  @@map("social_links")
+}
+
+// ============================================
+// PRODUCTS & CATALOG
+// ============================================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  icon        String?
+  parentId    String?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  
+  // Relaciones
+  products    Product[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([slug])
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información básica
+  name        String
+  description String   @db.Text
+  price       Float
+  
+  // Stock
+  stock       Int      @default(0)
+  lowStockThreshold Int @default(5)
+  
+  // Categoría
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  
+  // Estado
+  isActive    Boolean  @default(true)
+  
+  // SEO
+  slug        String   @unique
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  images      ProductImage[]
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  
+  @@index([userId])
+  @@index([categoryId])
+  @@index([slug])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductImage {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  url         String
+  altText     String?
+  order       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Ej: "Talla: M, Color: Rojo"
+  name        String   // "M - Rojo"
+  sku         String?  @unique
+  price       Float?   // Precio específico (opcional)
+  stock       Int      @default(0)
+  
+  // Atributos como JSON
+  attributes  Json     // { "talla": "M", "color": "Rojo" }
+  
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([productId])
+  @@index([sku])
+  @@map("product_variants")
+}
+
+// ============================================
+// ORDERS & SALES
+// ============================================
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique // ORD-20240101-XXXXX
+  
+  // Vendedor
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  // Cliente
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  
+  // Dirección de entrega
+  deliveryAddress String?       @db.Text
+  deliveryNotes   String?       @db.Text
+  
+  // Status
+  status          OrderStatus   @default(PENDING)
+  
+  // Pago
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  // Montos
+  subtotal        Float
+  discount        Float         @default(0)
+  total           Float
+  
+  // Cupón aplicado
+  couponId        String?
+  coupon          Coupon?       @relation(fields: [couponId], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deliveredAt     DateTime?
+  
+  // Relaciones
+  items           OrderItem[]
+  
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  // Snapshot de datos (por si el producto se edita después)
+  productName     String
+  productPrice    Float
+  
+  // Variante seleccionada
+  variantName     String?
+  
+  quantity        Int
+  unitPrice       Float
+  subtotal        Float
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ============================================
+// COUPONS & DISCOUNTS
+// ============================================
+
+model Coupon {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Código del cupón
+  code            String        @unique
+  
+  // Tipo de descuento
+  discountType    DiscountType
+  discountValue   Float         // 20 (%) o 10 (PEN)
+  
+  // Restricciones
+  minPurchase     Float?        // Monto mínimo de compra
+  maxDiscount     Float?        // Descuento máximo (útil para porcentajes)
+  usageLimit      Int?          // Límite de usos
+  usageCount      Int           @default(0)
+  
+  // Validez
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Estado
+  status          CouponStatus  @default(ACTIVE)
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relaciones
+  orders          Order[]
+  
+  @@index([userId])
+  @@index([code])
+  @@index([status])
+  @@map("coupons")
+}
+
+// ============================================
+// REVIEWS & RATINGS
+// ============================================
+
+model Review {
+  id              String   @id @default(cuid())
+  
+  // Vendedor calificado
+  sellerId        String
+  seller          User     @relation("SellerReviews", fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  // Cliente que califica
+  customerId      String
+  customer        User     @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Calificación
+  rating          Int      // 1-5 estrellas
+  comment         String?  @db.Text
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sellerId])
+  @@index([customerId])
+  @@map("reviews")
+}
