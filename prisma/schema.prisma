@@ -22,6 +22,7 @@ enum Plan {
 
 enum Role {
   SELLER
+  CUSTOMER
   ADMIN
 }
 
@@ -71,7 +72,7 @@ enum VerificationStatus {
 // ============================================
 
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   email     String   @unique
   username  String   @unique
   password  String
@@ -109,7 +110,7 @@ model User {
 }
 
 model StoreProfile {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -134,7 +135,7 @@ model StoreProfile {
 }
 
 model SocialLink {
-  id              String       @id @default(cuid())
+  id              String       @id @default(uuid())
   storeProfileId  String
   storeProfile    StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
   
@@ -147,7 +148,7 @@ model SocialLink {
 }
 
 model Category {
-  id             String         @id @default(cuid())
+  id             String         @id @default(uuid())
   name           String         @unique
   description    String?
 
@@ -163,7 +164,7 @@ model Category {
 // ============================================
 
 model ProductCategory {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -185,7 +186,7 @@ model ProductCategory {
 }
 
 model Product {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -229,7 +230,7 @@ model Product {
 }
 
 model ProductImage {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
@@ -244,7 +245,7 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
@@ -272,7 +273,7 @@ model ProductVariant {
 // ============================================
 
 model Order {
-  id              String        @id @default(cuid())
+  id              String        @id @default(uuid())
   orderNumber     String        @unique // ORD-20240101-XXXXX
   
   // Vendedor
@@ -320,7 +321,7 @@ model Order {
 }
 
 model OrderItem {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
   orderId         String
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
@@ -350,7 +351,7 @@ model OrderItem {
 // ============================================
 
 model Coupon {
-  id              String        @id @default(cuid())
+  id              String        @id @default(uuid())
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -395,7 +396,7 @@ model Coupon {
 // ============================================
 
 model Review {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
   
   productId       String?
   product         Product? @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)

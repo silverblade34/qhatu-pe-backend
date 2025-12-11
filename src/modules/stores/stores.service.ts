@@ -79,6 +79,12 @@ export class StoresService {
               storeName: true,
               bio: true,
               logo: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                }
+              },
               banner: true,
               badges: true,
             },
@@ -116,6 +122,7 @@ export class StoresService {
         bio: store.storeProfile.bio,
         logo: store.storeProfile.logo,
         banner: store.storeProfile.banner,
+        category: store.storeProfile.category,
         isVerified: store.isVerified,
         badges: store.storeProfile.badges,
         rating: {
@@ -130,7 +137,6 @@ export class StoresService {
       };
     });
 
-    // Aplicar ordenamiento
     if (sort === 'rating') {
       formattedStores.sort((a, b) => b.rating.average - a.rating.average);
     } else if (sort === 'products') {

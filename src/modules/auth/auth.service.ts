@@ -144,7 +144,7 @@ export class AuthService {
         phone: '', // Opcional para clientes
         plan: 'BASIC',
         avatar: avatarUrl,
-        role: 'SELLER', // Los clientes también son SELLER pero sin tienda activa
+        role: 'CUSTOMER', // Los clientes son CUSTOMER y sin tienda activa
         isVerified: false,
       },
     });
