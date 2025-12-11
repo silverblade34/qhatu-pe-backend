@@ -18,9 +18,31 @@ export class ProductsService {
     private prisma: PrismaService,
     private variantsService: ProductVariantsService,
     private stockService: ProductStockService,
-  ) {}
+  ) { }
 
   async create(userId: string, createProductDto: CreateProductDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true }
+    });
+
+    const productCount = await this.prisma.product.count({
+      where: { userId }
+    });
+
+    // Límites según plan
+    const limits = {
+      BASIC: 15,
+      PRO: 100,
+      PREMIUM: Infinity
+    };
+
+    if (productCount >= limits[user.plan]) {
+      throw new BadRequestException(
+        `Has alcanzado el límite de ${limits[user.plan]} productos para tu plan ${user.plan}`
+      );
+    }
+
     // Validar categoría si se proporciona
     if (createProductDto.categoryId) {
       const category = await this.prisma.productCategory.findUnique({
@@ -313,7 +335,7 @@ export class ProductsService {
     const avgRating =
       product.reviews.length > 0
         ? product.reviews.reduce((acc, r) => acc + r.rating, 0) /
-          product.reviews.length
+        product.reviews.length
         : 0;
 
     return {
@@ -431,6 +453,189 @@ export class ProductsService {
       total,
       limit: filters.limit || 20,
       offset: filters.offset || 0,
+    };
+  }
+
+  async getLowStockProducts(userId: string) {
+    return this.prisma.product.findMany({
+      where: {
+        userId,
+        isActive: true,
+        OR: [
+          { stock: { lte: this.prisma.product.fields.lowStockThreshold } },
+          {
+            variants: {
+              some: {
+                stock: { lte: 5 }
+              }
+            }
+          }
+        ]
+      },
+      include: {
+        images: { take: 1 },
+        variants: {
+          where: { stock: { lte: 5 } }
+        }
+      }
+    });
+  }
+
+  async generateWhatsAppMessage(
+    username: string,
+    slug: string,
+    variantId?: string,
+    couponCode?: string
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { username: username.toLowerCase() },
+      include: { storeProfile: true }
+    });
+
+    const product = await this.prisma.product.findFirst({
+      where: { userId: user.id, slug },
+      include: {
+        images: { take: 1 },
+        variants: variantId ? { where: { id: variantId } } : false
+      }
+    });
+
+    let price = product.price;
+    let variantName = '';
+    let discount = 0;
+
+    // Si hay variante seleccionada
+    if (variantId && product.variants?.length > 0) {
+      const variant = product.variants[0];
+      variantName = variant.name;
+      price = variant.price || product.price;
+    }
+
+    // Si hay cupón
+    if (couponCode) {
+      const coupon = await this.prisma.coupon.findFirst({
+        where: {
+          userId: user.id,
+          code: couponCode,
+          status: 'ACTIVE',
+          startDate: { lte: new Date() },
+          endDate: { gte: new Date() }
+        }
+      });
+
+      if (coupon) {
+        if (coupon.discountType === 'PERCENTAGE') {
+          discount = (price * coupon.discountValue) / 100;
+          if (coupon.maxDiscount && discount > coupon.maxDiscount) {
+            discount = coupon.maxDiscount;
+          }
+        } else {
+          discount = coupon.discountValue;
+        }
+      }
+    }
+
+    const total = price - discount;
+    const productUrl = `https://qhatu.pe/${username}/${slug}`;
+
+    const message = `¡Hola! Me interesa:
+
+    📦 Producto: ${product.name}${variantName ? `
+    📏 Variante: ${variantName}` : ''}
+    💰 Precio: S/. ${price.toFixed(2)}${discount > 0 ? `
+    🎟️ Cupón: ${couponCode} (-S/. ${discount.toFixed(2)})
+    💵 Total: S/. ${total.toFixed(2)}` : ''}
+
+    Link: ${productUrl}`;
+
+    return {
+      message,
+      whatsappUrl: `https://wa.me/${user.storeProfile.phone}?text=${encodeURIComponent(message)}`,
+      phone: user.storeProfile.phone
+    };
+  }
+
+  async validateCoupon(username: string, code: string, productIds: string[]) {
+    // Buscar usuario y su tienda
+    const user = await this.prisma.user.findUnique({
+      where: { username: username.toLowerCase() },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Tienda no encontrada');
+    }
+
+    // Buscar el cupón
+    const coupon = await this.prisma.coupon.findFirst({
+      where: {
+        userId: user.id,
+        code: code.toUpperCase(),
+        status: 'ACTIVE',
+        startDate: { lte: new Date() },
+        endDate: { gte: new Date() },
+      },
+    });
+
+    if (!coupon) {
+      throw new NotFoundException('Cupón no válido o expirado');
+    }
+
+    // Verificar límite de usos
+    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+      throw new BadRequestException('Este cupón ha alcanzado su límite de usos');
+    }
+
+    // Si el cupón es para productos específicos, validar
+    if (coupon.productIds.length > 0) {
+      const hasValidProduct = productIds.some(id =>
+        coupon.productIds.includes(id)
+      );
+
+      if (!hasValidProduct) {
+        throw new BadRequestException(
+          'Este cupón no es válido para los productos seleccionados'
+        );
+      }
+    }
+
+    // Calcular descuento potencial (esto es solo una vista previa)
+    let discountPreview = {
+      type: coupon.discountType,
+      value: coupon.discountValue,
+      minPurchase: coupon.minPurchase,
+      maxDiscount: coupon.maxDiscount,
+      message: '',
+    };
+
+    if (coupon.discountType === 'PERCENTAGE') {
+      discountPreview.message = `Descuento del ${coupon.discountValue}%`;
+      if (coupon.maxDiscount) {
+        discountPreview.message += ` (máximo S/. ${coupon.maxDiscount})`;
+      }
+    } else {
+      discountPreview.message = `Descuento de S/. ${coupon.discountValue}`;
+    }
+
+    if (coupon.minPurchase) {
+      discountPreview.message += ` - Compra mínima: S/. ${coupon.minPurchase}`;
+    }
+
+    return {
+      valid: true,
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        minPurchase: coupon.minPurchase,
+        maxDiscount: coupon.maxDiscount,
+        usageLimit: coupon.usageLimit,
+        usageCount: coupon.usageCount,
+        remainingUses: coupon.usageLimit
+          ? coupon.usageLimit - coupon.usageCount
+          : null,
+      },
+      discount: discountPreview,
     };
   }
 

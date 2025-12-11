@@ -1,16 +1,16 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Avatar, AvatarCatalog } from './interfaces/avatar.interface';
 import { createAvatar } from '@dicebear/core';
 import * as initials from '@dicebear/initials';
+import { s3Client } from 'src/config/minio.config';
 
 export type AvatarStyle = 'initials' | 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'personas' | 'shapes';
 
 @Injectable()
 export class AvatarService implements OnModuleInit {
   private catalog: AvatarCatalog | null = null;
-  private s3Client: S3Client;
   private readonly bucketName = 'avatars';
 
   private readonly styleDescriptions = {
@@ -58,17 +58,7 @@ export class AvatarService implements OnModuleInit {
     },
   };
 
-  constructor(private config: ConfigService) {
-    this.s3Client = new S3Client({
-      endpoint: this.config.get('minio.endpoint'),
-      region: this.config.get('minio.region'),
-      credentials: {
-        accessKeyId: this.config.get('minio.accessKeyId'),
-        secretAccessKey: this.config.get('minio.secretAccessKey'),
-      },
-      forcePathStyle: true,
-    });
-  }
+  constructor(private config: ConfigService) { }
 
   async onModuleInit() {
     try {
@@ -85,7 +75,7 @@ export class AvatarService implements OnModuleInit {
       Key: 'catalog.json',
     });
 
-    const response = await this.s3Client.send(command);
+    const response = await s3Client.send(command);
     const catalogJson = await response.Body.transformToString();
     this.catalog = JSON.parse(catalogJson);
   }
@@ -189,9 +179,9 @@ export class AvatarService implements OnModuleInit {
       ACL: 'public-read',
     });
 
-    await this.s3Client.send(command);
+    await s3Client.send(command);
 
-    const publicUrl = this.config.get('minio.endpoint');
+    const publicUrl = this.config.get('minio.publicUrl');
     return `${publicUrl}/${this.bucketName}/${filename}`;
   }
 
