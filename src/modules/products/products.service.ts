@@ -30,7 +30,7 @@ export class ProductsService {
 
     // Límites según plan
     const limits = {
-      BASIC: 20,
+      BASIC: 15,
       PRO: 100,
       PREMIUM: Infinity
     };

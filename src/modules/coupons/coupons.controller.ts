@@ -21,10 +21,6 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 export class CouponsController {
   constructor(private readonly couponsService: CouponsService) { }
 
-  /**
-   * POST /coupons
-   * Crea un nuevo cupón
-   */
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(
@@ -34,10 +30,6 @@ export class CouponsController {
     return this.couponsService.create(user.id, createCouponDto);
   }
 
-  /**
-   * PATCH /coupons/:id
-   * Actualiza un cupón
-   */
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   async update(
@@ -48,10 +40,6 @@ export class CouponsController {
     return this.couponsService.update(user.id, couponId, updateCouponDto);
   }
 
-  /**
-   * DELETE /coupons/:id
-   * Elimina un cupón (solo si no fue usado)
-   */
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async delete(
@@ -61,10 +49,6 @@ export class CouponsController {
     return this.couponsService.delete(user.id, couponId);
   }
 
-  /**
-   * PATCH /coupons/:id/toggle
-   * Activa/Desactiva un cupón rápidamente (útil para lives)
-   */
   @Patch(':id/toggle')
   @UseGuards(JwtAuthGuard)
   async toggleStatus(
@@ -74,10 +58,6 @@ export class CouponsController {
     return this.couponsService.toggleStatus(user.id, couponId);
   }
 
-  /**
-   * GET /coupons
-   * Lista todos los cupones del vendedor
-   */
   @Get()
   @UseGuards(JwtAuthGuard)
   async getSellerCoupons(
@@ -87,10 +67,6 @@ export class CouponsController {
     return this.couponsService.getSellerCoupons(user.id, filters);
   }
 
-  /**
-   * GET /coupons/:id
-   * Obtiene un cupón específico con sus detalles
-   */
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async getCouponById(
@@ -100,10 +76,6 @@ export class CouponsController {
     return this.couponsService.getCouponById(user.id, couponId);
   }
 
-  /**
-   * GET /coupons/:id/stats
-   * Estadísticas de uso del cupón
-   */
   @Get(':id/stats')
   @UseGuards(JwtAuthGuard)
   async getCouponStats(
@@ -113,10 +85,6 @@ export class CouponsController {
     return this.couponsService.getCouponStats(user.id, couponId);
   }
 
-  /**
-   * POST /coupons/validate/:username
-   * Valida un cupón (endpoint público para clientes)
-   */
   @Post('validate/:username')
   async validateCoupon(
     @Param('username') username: string,
@@ -130,10 +98,6 @@ export class CouponsController {
     );
   }
 
-  /**
-   * GET /coupons/public/:username
-   * Obtiene cupones activos públicamente (para mostrar en catálogo)
-   */
   @Get('public/:username')
   async getPublicActiveCoupons(@Param('username') username: string) {
     return this.couponsService.getPublicActiveCoupons(username);

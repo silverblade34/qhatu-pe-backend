@@ -20,7 +20,6 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) { }
 
   /**
-   * POST /orders/whatsapp-message
    * Genera el mensaje de WhatsApp sin crear la orden
    * Endpoint PÚBLICO (el cliente lo usa desde el catálogo)
    */
@@ -30,7 +29,6 @@ export class OrdersController {
   }
 
   /**
-   * POST /orders
    * Crea una orden real (el vendedor confirma la venta)
    * Requiere autenticación
    */
@@ -42,7 +40,6 @@ export class OrdersController {
   }
 
   /**
-   * PATCH /orders/:id/status
    * Actualiza el estado de una orden
    */
   @Patch(':id/status')
@@ -56,7 +53,6 @@ export class OrdersController {
   }
 
   /**
-   * GET /orders
    * Lista todas las órdenes del vendedor con filtros
    */
   @Get()
@@ -69,7 +65,6 @@ export class OrdersController {
   }
 
   /**
-   * GET /orders/stats
    * Estadísticas de ventas del vendedor
    */
   @Get('stats')
@@ -79,7 +74,6 @@ export class OrdersController {
   }
 
   /**
-   * GET /orders/:id
    * Obtiene una orden específica
    */
   @Get(':id')
