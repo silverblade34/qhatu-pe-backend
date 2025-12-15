@@ -11,6 +11,7 @@ import { ProductCategoriesModule } from './modules/product-categories/product-ca
 import { UploadModule } from './modules/upload/upload.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
+import { MailModule } from './modules/mail/mail.module';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import awsConfig from './config/aws.config';
@@ -35,6 +36,7 @@ import minioConfig from './config/minio.config';
     UploadModule,
     OrdersModule,
     CouponsModule,
+    MailModule,
   ],
 })
 export class AppModule {}

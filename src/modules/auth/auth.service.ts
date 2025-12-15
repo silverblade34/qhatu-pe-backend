@@ -8,7 +8,10 @@ import { RegisterSellerDto } from './dto/register-seller.dto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { QuickRegisterDto } from './dto/quick-register.dto';
 import { LoginDto } from './dto/login.dto';
-
+import { MailService } from '../mail/mail.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { PasswordResetService } from './services/password-reset.service';
 @Injectable()
 export class AuthService {
   constructor(
@@ -16,6 +19,8 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private avatarService: AvatarService,
+    private mailService: MailService,
+    private passwordResetService: PasswordResetService,
   ) { }
 
   // REGISTRO DE VENDEDORES
@@ -59,7 +64,6 @@ export class AuthService {
       );
     }
 
-
     // 6. Crear vendedor con tienda
     const user = await this.prisma.user.create({
       data: {
@@ -87,6 +91,10 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user.id, user.username, user.role);
+
+    this.mailService
+      .sendWelcomeEmail(user.email, user.fullName, user.username)
+      .catch((error) => console.error('Error enviando bienvenida:', error));
 
     return {
       message: '¡Tienda creada exitosamente! Bienvenido a Qhatu.pe',
@@ -367,5 +375,17 @@ export class AuthService {
 
   async logout(userId: string) {
     return { message: 'Sesión cerrada exitosamente' };
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    return this.passwordResetService.requestPasswordReset(forgotPasswordDto);
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    return this.passwordResetService.resetPassword(resetPasswordDto);
+  }
+
+  async verifyResetToken(token: string) {
+    return this.passwordResetService.verifyResetToken(token);
   }
 }

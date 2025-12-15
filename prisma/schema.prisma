@@ -27,12 +27,12 @@ enum Role {
 }
 
 enum OrderStatus {
-  PENDING      // Esperando confirmación
-  CONFIRMED    // Confirmado por vendedor
-  PREPARING    // Preparando pedido
-  READY        // Listo para entrega/envío
-  DELIVERED    // Entregado
-  CANCELLED    // Cancelado
+  PENDING // Esperando confirmación
+  CONFIRMED // Confirmado por vendedor
+  PREPARING // Preparando pedido
+  READY // Listo para entrega/envío
+  DELIVERED // Entregado
+  CANCELLED // Cancelado
 }
 
 enum PaymentMethod {
@@ -72,62 +72,63 @@ enum VerificationStatus {
 // ============================================
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  fullName  String
-  phone     String
-  avatar        String?
-
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  username           String    @unique
+  password           String
+  fullName           String
+  phone              String
+  avatar             String?
+  resetPasswordToken String?
+  resetPasswordExpiry DateTime?
   // Plan de suscripción
-  plan              Plan     @default(BASIC)
-  planExpiresAt     DateTime?
-  
+  plan               Plan      @default(BASIC)
+  planExpiresAt      DateTime?
+
   // Verificación
-  isVerified        Boolean  @default(false)
+  isVerified         Boolean            @default(false)
   verificationStatus VerificationStatus @default(UNVERIFIED)
-  
+
   // Role
-  role              Role     @default(SELLER)
-  
+  role Role @default(SELLER)
+
   // Timestamps
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relaciones
   storeProfile      StoreProfile?
   products          Product[]
   productCategories ProductCategory[]
   orders            Order[]
   coupons           Coupon[]
-  reviews           Review[]       @relation("SellerReviews")
-  receivedReviews   Review[]       @relation("CustomerReviews")
-  
+  reviews           Review[]          @relation("SellerReviews")
+  receivedReviews   Review[]          @relation("CustomerReviews")
+
   @@index([username])
   @@index([email])
   @@map("users")
 }
 
 model StoreProfile {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  storeName   String
-  bio         String?  @db.Text
-  logo        String?
-  banner      String?
-  phone       String?
+  storeName String
+  bio       String? @db.Text
+  logo      String?
+  banner    String?
+  phone     String?
 
-  categoryId  String?
-  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
-  isActive    Boolean  @default(true)
-  badges      String[] @default([])
+  isActive Boolean  @default(true)
+  badges   String[] @default([])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   socialLinks SocialLink[]
 
@@ -135,26 +136,26 @@ model StoreProfile {
 }
 
 model SocialLink {
-  id              String       @id @default(uuid())
-  storeProfileId  String
-  storeProfile    StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
-  
-  platform        String       // INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP
-  url             String
-  
-  createdAt       DateTime     @default(now())
-  
+  id             String       @id @default(uuid())
+  storeProfileId String
+  storeProfile   StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
+
+  platform String // INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP
+  url      String
+
+  createdAt DateTime @default(now())
+
   @@map("social_links")
 }
 
 model Category {
-  id             String         @id @default(uuid())
-  name           String         @unique
-  description    String?
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
 
-  storeProfiles  StoreProfile[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  storeProfiles StoreProfile[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@map("categories")
 }
@@ -164,63 +165,63 @@ model Category {
 // ============================================
 
 model ProductCategory {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  name        String    // "Polos", "Pantalones", "Zapatillas"
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String // "Polos", "Pantalones", "Zapatillas"
   slug        String
   description String?
-  icon        String?   // emoji o url de icono
-  order       Int       @default(0) // Para ordenar las categorías
-  
+  icon        String? // emoji o url de icono
+  order       Int     @default(0) // Para ordenar las categorías
+
   // Relaciones
-  products    Product[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([userId, slug]) // Slug único por vendedor
   @@index([userId])
   @@map("product_categories")
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Información básica
   name        String
-  description String   @db.Text
+  description String @db.Text
   price       Float
-  
+
   // Stock
-  stock       Int      @default(0)
+  stock             Int @default(0)
   lowStockThreshold Int @default(5)
-  
+
   // Categoría del producto (personalizada por vendedor)
-  categoryId  String?
-  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  
+  categoryId String?
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   // Estado y features especiales
-  isActive    Boolean  @default(true)
-  isFlashSale Boolean  @default(false)  // Oferta flash
-  isFeatured  Boolean  @default(false)  // Destacado
-  isComingSoon Boolean @default(false)  // Próximamente
-  
+  isActive     Boolean @default(true)
+  isFlashSale  Boolean @default(false) // Oferta flash
+  isFeatured   Boolean @default(false) // Destacado
+  isComingSoon Boolean @default(false) // Próximamente
+
   // SEO
-  slug        String
-  
+  slug String
+
   // Timestamps
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relaciones
-  images      ProductImage[]
-  variants    ProductVariant[]
-  orderItems  OrderItem[]
-  reviews     Review[]         @relation("ProductReviews")
+  images     ProductImage[]
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+  reviews    Review[]         @relation("ProductReviews")
 
   @@unique([userId, slug]) // Slug único por vendedor
   @@index([userId])
@@ -230,39 +231,40 @@ model Product {
 }
 
 model ProductImage {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  url         String
-  altText     String?
-  order       Int      @default(0)
-  
-  createdAt   DateTime @default(now())
-  isPrimary   Boolean  @default(false)
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url     String
+  altText String?
+  order   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  isPrimary Boolean  @default(false)
+
   @@index([productId])
   @@map("product_images")
 }
 
 model ProductVariant {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   // Ej: "M - Rojo"
-  name        String
-  sku         String?  @unique
-  price       Float?   // Precio específico (opcional)
-  stock       Int      @default(0)
-  
+  name  String
+  sku   String? @unique
+  price Float? // Precio específico (opcional)
+  stock Int     @default(0)
+
   // Atributos como JSON: { "talla": "M", "color": "Rojo" }
-  attributes  Json
-  
-  isActive    Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  attributes Json
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([productId])
   @@index([sku])
   @@map("product_variants")
@@ -273,46 +275,46 @@ model ProductVariant {
 // ============================================
 
 model Order {
-  id              String        @id @default(uuid())
-  orderNumber     String        @unique // ORD-20240101-XXXXX
-  
+  id          String @id @default(uuid())
+  orderNumber String @unique // ORD-20240101-XXXXX
+
   // Vendedor
-  userId          String
-  user            User          @relation(fields: [userId], references: [id])
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
   // Cliente
-  customerName    String
-  customerPhone   String
-  customerEmail   String?
-  
+  customerName  String
+  customerPhone String
+  customerEmail String?
+
   // Dirección de entrega
-  deliveryAddress String?       @db.Text
-  deliveryNotes   String?       @db.Text
-  
+  deliveryAddress String? @db.Text
+  deliveryNotes   String? @db.Text
+
   // Status
-  status          OrderStatus   @default(PENDING)
-  
+  status OrderStatus @default(PENDING)
+
   // Pago
-  paymentMethod   PaymentMethod
-  paymentStatus   PaymentStatus @default(PENDING)
-  
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+
   // Montos
-  subtotal        Float
-  discount        Float         @default(0)
-  total           Float
-  
+  subtotal Float
+  discount Float @default(0)
+  total    Float
+
   // Cupón aplicado
-  couponId        String?
-  coupon          Coupon?       @relation(fields: [couponId], references: [id])
-  
+  couponId String?
+  coupon   Coupon? @relation(fields: [couponId], references: [id])
+
   // Timestamps
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deliveredAt     DateTime?
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deliveredAt DateTime?
+
   // Relaciones
-  items           OrderItem[]
-  
+  items OrderItem[]
+
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
@@ -321,26 +323,26 @@ model Order {
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
-  orderId         String
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
   // Snapshot de datos (por si el producto se edita después)
-  productName     String
-  productPrice    Float
-  
+  productName  String
+  productPrice Float
+
   // Variante seleccionada
-  variantName     String?
-  
-  quantity        Int
-  unitPrice       Float
-  subtotal        Float
-  
-  createdAt       DateTime @default(now())
-  
+  variantName String?
+
+  quantity  Int
+  unitPrice Float
+  subtotal  Float
+
+  createdAt DateTime @default(now())
+
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
@@ -351,40 +353,40 @@ model OrderItem {
 // ============================================
 
 model Coupon {
-  id              String        @id @default(uuid())
-  userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Código del cupón
-  code            String
-  
+  code String
+
   // Tipo de descuento
-  discountType    DiscountType
-  discountValue   Float         // 20 (%) o 10 (PEN)
-  
+  discountType  DiscountType
+  discountValue Float // 20 (%) o 10 (PEN)
+
   // Restricciones
-  minPurchase     Float?        // Monto mínimo de compra
-  maxDiscount     Float?        // Descuento máximo (útil para porcentajes)
-  usageLimit      Int?          // Límite de usos
-  usageCount      Int           @default(0)
-  
+  minPurchase Float? // Monto mínimo de compra
+  maxDiscount Float? // Descuento máximo (útil para porcentajes)
+  usageLimit  Int? // Límite de usos
+  usageCount  Int    @default(0)
+
   // Productos específicos (opcional)
-  productIds      String[]      @default([]) // IDs de productos donde aplica
-  
+  productIds String[] @default([]) // IDs de productos donde aplica
+
   // Validez
-  startDate       DateTime
-  endDate         DateTime
-  
+  startDate DateTime
+  endDate   DateTime
+
   // Estado
-  status          CouponStatus  @default(ACTIVE)
-  
+  status CouponStatus @default(ACTIVE)
+
   // Timestamps
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relaciones
-  orders          Order[]
-  
+  orders Order[]
+
   @@unique([userId, code]) // Código único por vendedor
   @@index([userId])
   @@index([status])
@@ -396,27 +398,27 @@ model Coupon {
 // ============================================
 
 model Review {
-  id              String   @id @default(uuid())
-  
-  productId       String?
-  product         Product? @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
-  
+  id String @id @default(uuid())
+
+  productId String?
+  product   Product? @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
+
   // Vendedor calificado
-  sellerId        String
-  seller          User     @relation("SellerReviews", fields: [sellerId], references: [id], onDelete: Cascade)
-  
+  sellerId String
+  seller   User   @relation("SellerReviews", fields: [sellerId], references: [id], onDelete: Cascade)
+
   // Cliente que califica
-  customerId      String
-  customer        User     @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
-  
+  customerId String
+  customer   User   @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+
   // Calificación
-  rating          Int      // 1-5 estrellas
-  comment         String?  @db.Text
-  
+  rating  Int // 1-5 estrellas
+  comment String? @db.Text
+
   // Timestamps
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([productId])
   @@index([sellerId])
   @@index([customerId])

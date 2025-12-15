@@ -9,12 +9,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { DatabaseModule } from 'src/database/database.module';
 import { AvatarService } from '../avatar/avatar.service';
+import { MailModule } from '../mail/mail.module';
+import { PasswordResetService } from './services/password-reset.service';
 
 @Module({
   imports: [
     DatabaseModule,
     UsersModule,
     ConfigModule,
+    MailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -28,7 +31,8 @@ import { AvatarService } from '../avatar/avatar.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, AvatarService],
+  providers: [AuthService, JwtStrategy,
+    LocalStrategy, AvatarService, PasswordResetService],
   exports: [AuthService, JwtModule],
 })
-export class AuthModule {}
+export class AuthModule { }
