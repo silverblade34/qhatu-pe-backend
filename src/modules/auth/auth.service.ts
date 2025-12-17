@@ -159,6 +159,10 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.username, user.role);
 
+    this.mailService
+      .sendWelcomeEmail(user.email, user.fullName, user.username)
+      .catch((error) => console.error('Error enviando bienvenida:', error));
+
     return {
       message: 'Cuenta creada exitosamente',
       user: this.sanitizeUser(user),
