@@ -19,11 +19,9 @@ export class UploadController {
   }
 
   @Post('avatar')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('avatar'))
   async uploadAvatar(
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() user: any,
   ) {
     if (!file) {
       throw new BadRequestException('No se ha proporcionado ningún archivo');
@@ -39,11 +37,6 @@ export class UploadController {
       throw new BadRequestException('El archivo no debe superar los 2MB');
     }
 
-    const url = await this.uploadService.uploadFile(file, 'avatares', user.id);
-
-    return {
-      success: true,
-      url,
-    };
+    return await this.uploadService.uploadFile(file, 'custom-avatar', 'qhatupe');
   }
 }
