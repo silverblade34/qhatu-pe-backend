@@ -14,37 +14,33 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Etapa de instalación y construcción
+# Etapa de construcción
 FROM base AS builder
 COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
+COPY database ./database
 
-# ✅ Sin --mount (compatible con Docker antiguo)
+# Instalar todas las dependencias
 RUN pnpm install --frozen-lockfile
+
+# ✅ Usar el script de package.json
+RUN pnpm run prisma:generate
 
 # Copiar código fuente
 COPY . .
 
-# Generar Prisma y construir
-RUN pnpm prisma generate
+# Construir
 RUN pnpm build
-
-# Instalar solo dependencias de producción
-RUN pnpm install --prod --frozen-lockfile
-
-# Regenerar Prisma Client para producción
-RUN pnpm prisma generate
 
 # Etapa de producción
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copiar todo desde builder
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder /app/database ./database
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
