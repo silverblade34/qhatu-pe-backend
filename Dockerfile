@@ -15,16 +15,23 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Configurar pnpm store
-RUN pnpm config set store-dir /root/.local/share/pnpm/store
+# Configurar pnpm para permitir scripts de Prisma
+RUN pnpm config set auto-install-peers true
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
+
+# Copiar schema de Prisma ANTES de generar
+COPY prisma ./prisma
+
+# Generar cliente de Prisma explícitamente
+RUN pnpm prisma generate
 
 # Copy source code
 COPY . .
@@ -39,20 +46,27 @@ WORKDIR /usr/src/app
 # Habilitar corepack
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Instalar librerías runtime
+# Instalar OpenSSL (requerido por Prisma en runtime)
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libpango1.0-0 \
     libjpeg62-turbo \
     libgif7 \
     librsvg2-2 \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install production dependencies only
+# Copiar schema de Prisma
+COPY prisma ./prisma
+
+# Install production dependencies
 RUN pnpm install --prod --frozen-lockfile
+
+# Generar cliente de Prisma en producción
+RUN pnpm prisma generate
 
 # Copy built app
 COPY --from=builder /usr/src/app/dist ./dist
