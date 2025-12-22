@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  v1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '0.0.0.0:4000:4000'
+    env_file:
+      - .env
+    restart: unless-stopped
+    container_name: qhatupe-backend-app
+    environment:
+      - PORT=4000

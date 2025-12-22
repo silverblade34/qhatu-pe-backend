@@ -6,15 +6,14 @@ import { AvatarService, AvatarStyle } from './avatar.service';
 @ApiTags('Avatars')
 @Controller('avatars')
 export class AvatarController {
-  constructor(private readonly avatarService: AvatarService) {}
+  constructor(private readonly avatarService: AvatarService) { }
 
   @Public()
   @Get()
   @ApiOperation({ summary: 'Obtener todos los avatares del catálogo' })
   @ApiQuery({ name: 'limit', required: false })
   async getAllAvatars(@Query('limit') limit?: number) {
-    const avatars = this.avatarService.getAllAvatars(limit ? +limit : undefined);
-    return { success: true, total: avatars.length, data: avatars };
+    return this.avatarService.getAllAvatars(limit ? +limit : undefined);
   }
 
   @Public()
@@ -26,11 +25,10 @@ export class AvatarController {
     @Query('count') count?: number,
     @Query('style') style?: AvatarStyle,
   ) {
-    const avatars = this.avatarService.getRandomAvatarsForSelection(
+    return this.avatarService.getRandomAvatarsForSelection(
       count ? +count : 12,
       style,
     );
-    return { success: true, total: avatars.length, data: avatars };
   }
 
   @Public()
@@ -38,11 +36,11 @@ export class AvatarController {
   @ApiOperation({ summary: 'Obtener un avatar aleatorio' })
   @ApiQuery({ name: 'style', required: false })
   getRandomAvatar(@Query('style') style?: AvatarStyle) {
-    const avatar = style 
+    const avatar = style
       ? this.avatarService.getRandomAvatarByStyle(style)
       : this.avatarService.getRandomAvatar();
     if (!avatar) return { success: false, message: 'No disponible' };
-    return { success: true, data: avatar };
+    return avatar;
   }
 
   @Public()
@@ -51,7 +49,7 @@ export class AvatarController {
   getAvatarById(@Param('id') id: string) {
     const avatar = this.avatarService.getAvatarById(id);
     if (!avatar) return { success: false, message: 'No encontrado' };
-    return { success: true, data: avatar };
+    return avatar;
   }
 
   @Public()
@@ -60,7 +58,7 @@ export class AvatarController {
   getCatalogStats() {
     const stats = this.avatarService.getCatalogStats();
     if (!stats) return { success: false };
-    return { success: true, data: stats };
+    return stats;
   }
 
   @Public()

@@ -18,7 +18,7 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
-  console.log(`🚀 Application is running on: http://0.0.0.0:${process.env.PORT ?? 3000}/api/v1`);
+  await app.listen(process.env.PORT ?? 4000, '0.0.0.0');
+  console.log(`🚀 Application is running on: http://0.0.0.0:${process.env.PORT ?? 4000}/api/v1`);
 }
 bootstrap();
