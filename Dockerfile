@@ -17,20 +17,18 @@ WORKDIR /app
 # Etapa de construcción
 FROM base AS builder
 COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
 
-# ✅ Copiar la carpeta database completa (contiene prisma/schema.prisma)
-COPY database ./database
-
-# Instalar TODAS las dependencias (incluyendo devDependencies con prisma)
+# Instalar todas las dependencias
 RUN pnpm install --frozen-lockfile
 
-# ✅ Usar el comando correcto con la ruta de tu schema
-RUN pnpm prisma generate --schema=./database/prisma/schema.prisma
+# Generar Prisma Client (usará prisma/schema.prisma por defecto)
+RUN pnpm prisma generate
 
 # Copiar código fuente
 COPY . .
 
-# Construir la aplicación
+# Construir
 RUN pnpm build
 
 # Etapa de producción
@@ -38,13 +36,10 @@ FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copiar archivos necesarios
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/database ./database
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/dist ./dist
-
-# ✅ Copiar node_modules completo (incluye Prisma Client generado)
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 4000
