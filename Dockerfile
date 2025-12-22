@@ -1,82 +1,68 @@
-# Build stage
-FROM node:20-slim AS builder
-WORKDIR /usr/src/app
+# Etapa base con pnpm
+FROM node:20-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
-# Habilitar corepack para usar pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Instalar dependencias del sistema para canvas
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    libcairo2-dev \
-    libpango1.0-dev \
-    libjpeg-dev \
-    libgif-dev \
-    librsvg2-dev \
+# Instalar dependencias del sistema necesarias para canvas y prisma
+RUN apk add --no-cache \
     openssl \
-    && rm -rf /var/lib/apt/lists/*
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    librsvg
 
-# Copy package files
+WORKDIR /app
+
+# Etapa de dependencias
+FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-
-# Configurar pnpm para permitir scripts de Prisma
-RUN pnpm config set auto-install-peers true
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copiar schema de Prisma ANTES de generar
 COPY prisma ./prisma
 
-# Generar cliente de Prisma explícitamente
-RUN pnpm prisma generate
+# Instalar TODAS las dependencias (incluye devDependencies con prisma)
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
 
-# Copy source code
+# Etapa de construcción
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
 COPY . .
 
-# Build
-RUN pnpm run build
-
-# Production stage
-FROM node:20-slim AS production
-WORKDIR /usr/src/app
-
-# Habilitar corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Instalar OpenSSL (requerido por Prisma en runtime)
-RUN apt-get update && apt-get install -y \
-    libcairo2 \
-    libpango1.0-0 \
-    libjpeg62-turbo \
-    libgif7 \
-    librsvg2-2 \
-    openssl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Copiar schema de Prisma
-COPY prisma ./prisma
-
-# Install production dependencies
-RUN pnpm install --prod --frozen-lockfile
-
-# Generar cliente de Prisma en producción
+# Generar Prisma Client con la versión correcta
 RUN pnpm prisma generate
 
-# Copy built app
-COPY --from=builder /usr/src/app/dist ./dist
+# Build de la aplicación
+RUN pnpm build
 
-# Expose port
+# Etapa de producción
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Copiar archivos de configuración
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
+
+# Instalar solo dependencias de producción
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --prod --frozen-lockfile
+
+# Copiar el build
+COPY --from=builder /app/dist ./dist
+
+# SOLUCIÓN: Copiar TODO node_modules desde builder (incluye Prisma generado)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Exponer puerto
 EXPOSE 4000
 
-# Non-root user
-RUN groupadd -r nodejs && useradd -r -g nodejs nestjs
-RUN chown -R nestjs:nodejs /usr/src/app
+# Crear usuario no-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001
+RUN chown -R nestjs:nodejs /app
 USER nestjs
 
+# Comando de inicio
 CMD ["node", "dist/main.js"]
