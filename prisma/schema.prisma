@@ -72,18 +72,18 @@ enum VerificationStatus {
 // ============================================
 
 model User {
-  id                 String    @id @default(uuid())
-  email              String    @unique
-  username           String    @unique
-  password           String
-  fullName           String
-  phone              String
-  avatar             String?
-  resetPasswordToken String?
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  username            String    @unique
+  password            String
+  fullName            String
+  phone               String
+  avatar              String?
+  resetPasswordToken  String?
   resetPasswordExpiry DateTime?
   // Plan de suscripción
-  plan               Plan      @default(BASIC)
-  planExpiresAt      DateTime?
+  plan                Plan      @default(BASIC)
+  planExpiresAt       DateTime?
 
   // Verificación
   isVerified         Boolean            @default(false)
@@ -224,6 +224,7 @@ model Product {
   reviews    Review[]         @relation("ProductReviews")
 
   @@unique([userId, slug]) // Slug único por vendedor
+  @@unique([userId, name])
   @@index([userId])
   @@index([categoryId])
   @@index([isActive])
@@ -253,7 +254,7 @@ model ProductVariant {
 
   // Ej: "M - Rojo"
   name  String
-  sku   String? @unique
+  sku   String?
   price Float? // Precio específico (opcional)
   stock Int     @default(0)
 
