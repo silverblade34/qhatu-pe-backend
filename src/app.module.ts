@@ -12,11 +12,14 @@ import { UploadModule } from './modules/upload/upload.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { MailModule } from './modules/mail/mail.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import awsConfig from './config/aws.config';
 import emailConfig from './config/email.config';
 import minioConfig from './config/minio.config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -25,6 +28,7 @@ import minioConfig from './config/minio.config';
       load: [databaseConfig, jwtConfig, awsConfig, emailConfig, minioConfig],
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     AuthModule,
     UsersModule,
@@ -37,6 +41,8 @@ import minioConfig from './config/minio.config';
     OrdersModule,
     CouponsModule,
     MailModule,
+    DashboardModule,
+    NotificationsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

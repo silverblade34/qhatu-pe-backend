@@ -9,10 +9,13 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { FilterOrderDto } from './dto/filter-order.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService) { }
 
   /**
    * Genera el mensaje de WhatsApp con los detalles del pedido
@@ -323,6 +326,7 @@ export class OrdersService {
 
       return newOrder;
     });
+    await this.notificationsService.notifyNewOrder(order.id);
 
     return order;
   }
