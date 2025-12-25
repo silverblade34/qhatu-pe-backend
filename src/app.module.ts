@@ -20,6 +20,7 @@ import awsConfig from './config/aws.config';
 import emailConfig from './config/email.config';
 import minioConfig from './config/minio.config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     MailModule,
     DashboardModule,
     NotificationsModule,
+    ReviewsModule,
   ],
 })
 export class AppModule { }
