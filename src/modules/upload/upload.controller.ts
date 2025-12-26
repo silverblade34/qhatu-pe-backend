@@ -15,7 +15,7 @@ export class UploadController {
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: any,
   ) {
-    return this.uploadService.uploadFiles(files, 'productos', user.id);
+    return this.uploadService.uploadFiles(files, 'products', user.id);
   }
 
   @Post('avatar')
@@ -37,6 +37,6 @@ export class UploadController {
       throw new BadRequestException('El archivo no debe superar los 2MB');
     }
 
-    return await this.uploadService.uploadFile(file, 'custom-avatar', 'qhatupe');
+    return await this.uploadService.uploadFile(file, 'avatars', 'qhatupe');
   }
 }

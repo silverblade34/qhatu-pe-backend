@@ -6,22 +6,26 @@ import * as lorelei from '@dicebear/lorelei';
 import * as personas from '@dicebear/personas';
 import * as shapes from '@dicebear/shapes';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import * as dotenv from 'dotenv';
 
-// Configuración de MinIO
+// Cargar variables de entorno
+dotenv.config();
+
+// Configuración de Cloudflare R2
 const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || 'http://147.182.161.84:9000',
-  region: process.env.S3_REGION || 'us-east-1',
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT,
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || 'yachay',
-    secretAccessKey: process.env.S3_SECRET_KEY || 'Yachay8*',
+    accessKeyId: process.env.R2_ACCESS_KEY!,
+    secretAccessKey: process.env.R2_SECRET_KEY!,
   },
-  forcePathStyle: true,
+  forcePathStyle: false, // R2 no requiere path style
 });
 
-const BUCKET_NAME = 'avatars';
-const PUBLIC_URL = process.env.S3_PUBLIC_URL || 'https://api.minio.s3.maquiadev.com';
+const BUCKET_NAME = process.env.R2_BUCKET_AVATARS || 'qhatupe-avatars';
+const PUBLIC_URL = process.env.R2_PUBLIC_URL_AVATARS || 'https://cdn.qhatupe.com';
 
-// Estilos disponibles - FIX: Importar correctamente
+// Estilos disponibles
 const styles = {
   adventurer: adventurer,
   avataaars: avataaars,
@@ -66,16 +70,13 @@ const styleMetadata = {
 
 // Seeds para generar variedad
 const seeds = [
-  'Alex', 'Sam', 'Jordan', 'Taylor', 'Morgan',
-  'Casey', 'Riley', 'Quinn', 'Avery', 'Dakota',
-  'Skyler', 'Sage', 'River', 'Phoenix', 'Rowan',
-  'Blake', 'Charlie', 'Drew', 'Finley', 'Harper',
-];
+  'Alex', 'Sam', 'Taylor', 'Jordan', 'Morgan',
+  'Riley', 'Avery', 'Blake',
+]; // 8
 
 const backgroundColors = [
-  '6366f1', 'ec4899', '8b5cf6', 'f59e0b', 
-  '10b981', '06b6d4', 'ef4444', '14b8a6',
-];
+  '6366f1', 'ec4899', '10b981', 'f59e0b',
+]; // 4
 
 interface GeneratedAvatar {
   id: string;
@@ -91,25 +92,26 @@ async function uploadAvatar(svg: string, filename: string): Promise<string> {
     Key: filename,
     Body: Buffer.from(svg),
     ContentType: 'image/svg+xml',
-    ACL: 'public-read',
+    // R2 no usa ACL de la misma forma que S3
   });
 
   await s3Client.send(command);
-  return `${PUBLIC_URL}/${BUCKET_NAME}/${filename}`;
+
+  // Retornar URL pública
+  return `${PUBLIC_URL}/${filename}`;
 }
 
 async function generateAndUploadAvatars(): Promise<GeneratedAvatar[]> {
   const allAvatars: GeneratedAvatar[] = [];
   let count = 0;
 
-  console.log('🎨 Iniciando generación de avatares...\n');
+  console.log('🎨 Iniciando generación de avatares para R2...\n');
 
   for (const [styleName, styleCollection] of Object.entries(styles)) {
     console.log(`📦 Procesando estilo: ${styleName}`);
-    
+
     for (const seed of seeds) {
       for (const bgColor of backgroundColors) {
-        // FIX: Crear avatar correctamente
         const avatar = createAvatar(styleCollection as any, {
           seed: `${seed}-${bgColor}`,
           size: 200,
@@ -117,10 +119,10 @@ async function generateAndUploadAvatars(): Promise<GeneratedAvatar[]> {
 
         const svg = avatar.toString();
         const filename = `${styleName}/${seed.toLowerCase()}-${bgColor}.svg`;
-        
+
         try {
           const url = await uploadAvatar(svg, filename);
-          
+
           allAvatars.push({
             id: `${styleName}-${seed.toLowerCase()}-${bgColor}`,
             style: styleName,
@@ -130,7 +132,7 @@ async function generateAndUploadAvatars(): Promise<GeneratedAvatar[]> {
           });
 
           count++;
-          
+
           if (count % 10 === 0) {
             console.log(`   ✅ ${count} avatares generados...`);
           }
@@ -139,7 +141,7 @@ async function generateAndUploadAvatars(): Promise<GeneratedAvatar[]> {
         }
       }
     }
-    
+
     console.log(`✨ Completado: ${styleName}\n`);
   }
 
@@ -165,21 +167,29 @@ async function saveCatalog(avatars: GeneratedAvatar[]) {
     Key: 'catalog.json',
     Body: JSON.stringify(catalog, null, 2),
     ContentType: 'application/json',
-    ACL: 'public-read',
   });
 
   await s3Client.send(command);
-  
-  console.log('\n📋 Catálogo guardado en MinIO');
-  console.log(`URL: ${PUBLIC_URL}/${BUCKET_NAME}/catalog.json`);
+
+  console.log('\n📋 Catálogo guardado en R2');
+  console.log(`URL: ${PUBLIC_URL}/catalog.json`);
 }
 
 async function main() {
+  console.log('🚀 Configuración:');
+  console.log(`   Endpoint: ${process.env.R2_ENDPOINT}`);
+  console.log(`   Bucket: ${BUCKET_NAME}`);
+  console.log(`   Public URL: ${PUBLIC_URL}\n`);
+
   try {
     const avatars = await generateAndUploadAvatars();
     await saveCatalog(avatars);
-    
+
     console.log('\n✅ Proceso completado exitosamente');
+    console.log(`\n📊 Resumen:`);
+    console.log(`   Total avatares: ${avatars.length}`);
+    console.log(`   Estilos: ${Object.keys(styles).length}`);
+    console.log(`   URL catálogo: ${PUBLIC_URL}/catalog.json`);
   } catch (error) {
     console.error('❌ Error en el proceso:', error);
     process.exit(1);

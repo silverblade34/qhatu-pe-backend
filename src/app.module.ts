@@ -18,15 +18,15 @@ import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import awsConfig from './config/aws.config';
 import emailConfig from './config/email.config';
-import minioConfig from './config/minio.config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import r2Config from './config/r2.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, awsConfig, emailConfig, minioConfig],
+      load: [databaseConfig, jwtConfig, awsConfig, emailConfig, r2Config],
       envFilePath: '.env',
     }),
     ScheduleModule.forRoot(),

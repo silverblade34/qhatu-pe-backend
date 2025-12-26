@@ -4,14 +4,19 @@ import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Avatar, AvatarCatalog } from './interfaces/avatar.interface';
 import { createAvatar } from '@dicebear/core';
 import * as initials from '@dicebear/initials';
-import { s3Client } from 'src/config/minio.config';
+import { r2Client } from 'src/config/r2.config';
 
-export type AvatarStyle = 'initials' | 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'personas' | 'shapes';
+export type AvatarStyle =
+  | 'adventurer'
+  | 'avataaars'
+  | 'bottts'
+  | 'lorelei';
 
 @Injectable()
 export class AvatarService implements OnModuleInit {
   private catalog: AvatarCatalog | null = null;
-  private readonly bucketName = 'avatars';
+  private readonly bucketName: string;
+  private readonly publicUrl: string;
 
   private readonly styleDescriptions = {
     initials: {
@@ -58,12 +63,16 @@ export class AvatarService implements OnModuleInit {
     },
   };
 
-  constructor(private config: ConfigService) { }
+  constructor(private config: ConfigService) {
+    // Obtener configuración del bucket de avatares
+    this.bucketName = this.config.get('r2.buckets.avatars.name');
+    this.publicUrl = this.config.get('r2.buckets.avatars.publicUrl');
+  }
 
   async onModuleInit() {
     try {
       await this.loadCatalog();
-      console.log('Catálogo de avatares cargado');
+      console.log(`Catálogo de avatares cargado desde R2: ${this.publicUrl}`);
     } catch (error) {
       console.error('Error cargando catálogo de avatares:', error.message);
     }
@@ -75,7 +84,7 @@ export class AvatarService implements OnModuleInit {
       Key: 'catalog.json',
     });
 
-    const response = await s3Client.send(command);
+    const response = await r2Client.send(command);
     const catalogJson = await response.Body.transformToString();
     this.catalog = JSON.parse(catalogJson);
   }
@@ -98,7 +107,7 @@ export class AvatarService implements OnModuleInit {
 
   getAvatarsByStyle(style: AvatarStyle, limit?: number) {
     if (!this.catalog) return [];
-    const filtered = this.catalog.avatars.filter(a => a.style === style);
+    const filtered = this.catalog.avatars.filter((a) => a.style === style);
     return limit ? filtered.slice(0, limit) : filtered;
   }
 
@@ -126,13 +135,13 @@ export class AvatarService implements OnModuleInit {
 
   getAvatarById(id: string): Avatar | null {
     if (!this.catalog) return null;
-    return this.catalog.avatars.find(a => a.id === id) || null;
+    return this.catalog.avatars.find((a) => a.id === id) || null;
   }
 
   getAvatarsByColor(color: string, limit?: number) {
     if (!this.catalog) return [];
     const filtered = this.catalog.avatars.filter(
-      a => a.backgroundColor.toLowerCase() === color.toLowerCase()
+      (a) => a.backgroundColor.toLowerCase() === color.toLowerCase(),
     );
     return limit ? filtered.slice(0, limit) : filtered;
   }
@@ -144,7 +153,7 @@ export class AvatarService implements OnModuleInit {
       generatedAt: this.catalog.generatedAt,
       totalAvatars: this.catalog.totalAvatars,
       styleCount: this.catalog.styles.length,
-      styles: this.catalog.styles.map(s => ({
+      styles: this.catalog.styles.map((s) => ({
         id: s.id,
         name: s.name,
         count: s.count,
@@ -157,8 +166,9 @@ export class AvatarService implements OnModuleInit {
   }
 
   /**
- * Genera avatar con iniciales y lo sube a MinIO
- */
+   * Genera avatar con iniciales y lo sube a R2
+   * Retorna URL pública usando el subdominio configurado
+   */
   async generateAndUploadInitialsAvatar(fullName: string): Promise<string> {
     const initialsText = this.getInitials(fullName);
     const timestamp = Date.now();
@@ -176,20 +186,20 @@ export class AvatarService implements OnModuleInit {
       Key: filename,
       Body: Buffer.from(svg),
       ContentType: 'image/svg+xml',
-      ACL: 'public-read',
     });
 
-    await s3Client.send(command);
+    await r2Client.send(command);
 
-    const publicUrl = this.config.get('minio.publicUrl');
-    return `${publicUrl}/${this.bucketName}/${filename}`;
+    // Retorna URL pública con subdominio personalizado
+    // Ejemplo: https://cdn.qhatupe.com/initials/user-jp-1234567890.svg
+    return `${this.publicUrl}/${filename}`;
   }
 
   private getInitials(fullName: string): string {
     return fullName
       .split(' ')
-      .filter(word => word.length > 0)
-      .map(word => word[0])
+      .filter((word) => word.length > 0)
+      .map((word) => word[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
