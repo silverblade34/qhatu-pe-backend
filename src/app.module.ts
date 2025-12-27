@@ -20,6 +20,7 @@ import awsConfig from './config/aws.config';
 import emailConfig from './config/email.config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 import r2Config from './config/r2.config';
 
 @Module({
@@ -45,6 +46,7 @@ import r2Config from './config/r2.config';
     DashboardModule,
     NotificationsModule,
     ReviewsModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule { }

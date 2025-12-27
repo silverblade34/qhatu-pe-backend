@@ -10,10 +10,14 @@ import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
 import { CouponStatus } from '@prisma/client';
 import { FilterCouponDto } from './dto/filter-coupon.dto';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class CouponsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private subscriptionService: SubscriptionService
+  ) { }
 
   async create(userId: string, createCouponDto: CreateCouponDto) {
     // Verificar límite de cupones según plan
@@ -22,6 +26,17 @@ export class CouponsService {
       select: { plan: true },
     });
 
+    // Validar que el plan tenga acceso a cupones
+    const planFeatures = this.subscriptionService.getPlanFeatures(user.plan);
+
+    if (!planFeatures.canUseCoupons) {
+      const nextPlan = this.subscriptionService.getNextPlan(user.plan);
+      throw new BadRequestException(
+        `Los cupones no están disponibles en tu plan ${user.plan}. ${nextPlan ? `Actualiza a ${nextPlan} para usar esta función.` : ''
+        }`,
+      );
+    }
+
     const activeCoupons = await this.prisma.coupon.count({
       where: {
         userId,
@@ -29,16 +44,15 @@ export class CouponsService {
       },
     });
 
-    const limits = {
-      BASIC: 1,
-      PRO: 5,
-      PREMIUM: Infinity,
-    };
-
-    if (activeCoupons >= limits[user.plan]) {
-      throw new BadRequestException(
-        `Has alcanzado el límite de ${limits[user.plan]} cupones activos para tu plan ${user.plan}`,
+    // Validar límite de cupones activos
+    try {
+      this.subscriptionService.validateResourceLimit(
+        user.plan,
+        'maxActiveCoupons',
+        activeCoupons,
       );
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
 
     // Verificar que el código no exista ya para este vendedor
@@ -50,9 +64,7 @@ export class CouponsService {
     });
 
     if (existingCoupon) {
-      throw new ConflictException(
-        'Ya existe un cupón con este código',
-      );
+      throw new ConflictException('Ya existe un cupón con este código');
     }
 
     // Validar productos si se especifican

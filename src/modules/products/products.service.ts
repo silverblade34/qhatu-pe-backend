@@ -10,35 +10,34 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductDto, AvailabilityFilter } from './dto/filter-product.dto';
 import slugify from 'slugify';
 import { ProductVariantsService } from './services/product-variants.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private variantsService: ProductVariantsService,
+    private subscriptionService: SubscriptionService,
   ) { }
 
   async create(userId: string, createProductDto: CreateProductDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { plan: true }
+      select: { plan: true },
     });
 
     const productCount = await this.prisma.product.count({
-      where: { userId }
+      where: { userId },
     });
 
-    // Límites según plan
-    const limits = {
-      BASIC: 15,
-      PRO: 100,
-      PREMIUM: Infinity
-    };
-
-    if (productCount >= limits[user.plan]) {
-      throw new BadRequestException(
-        `Has alcanzado el límite de ${limits[user.plan]} productos para tu plan ${user.plan}`
+    try {
+      this.subscriptionService.validateResourceLimit(
+        user.plan,
+        'maxProducts',
+        productCount,
       );
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
 
     // Validar que el nombre del producto sea único para este usuario
@@ -51,7 +50,7 @@ export class ProductsService {
 
     if (existingProduct) {
       throw new BadRequestException(
-        `Ya tienes un producto con el nombre "${createProductDto.name}". Por favor, usa un nombre diferente.`
+        `Ya tienes un producto con el nombre "${createProductDto.name}". Por favor, usa un nombre diferente.`,
       );
     }
 
@@ -81,7 +80,10 @@ export class ProductsService {
         if (!variant.sku) {
           return {
             ...variant,
-            sku: this.generateVariantSKU(createProductDto.name, variant.attributes)
+            sku: this.generateVariantSKU(
+              createProductDto.name,
+              variant.attributes,
+            ),
           };
         }
         // Si tiene SKU, usarlo tal cual
@@ -89,13 +91,24 @@ export class ProductsService {
       });
 
       // Validar que no haya SKUs duplicados en el payload
-      const skus = processedVariants.map(v => v.sku).filter(Boolean);
+      const skus = processedVariants.map((v) => v.sku).filter(Boolean);
       const duplicates = skus.filter((sku, idx) => skus.indexOf(sku) !== idx);
-
       if (duplicates.length > 0) {
         throw new BadRequestException(
-          `SKUs duplicados en las variantes: ${duplicates.join(', ')}`
+          `SKUs duplicados en las variantes: ${duplicates.join(', ')}`,
         );
+      }
+    }
+
+    // Validar límite de imágenes según plan
+    if (createProductDto.images && createProductDto.images.length > 0) {
+      try {
+        this.subscriptionService.validateFileUpload(
+          user.plan,
+          createProductDto.images.length,
+        );
+      } catch (error) {
+        throw new BadRequestException(error.message);
       }
     }
 
@@ -125,15 +138,12 @@ export class ProductsService {
 
     // Crear variantes si existen
     if (processedVariants && processedVariants.length > 0) {
-      await this.variantsService.createVariants(
-        product.id,
-        processedVariants,
-      );
+      await this.variantsService.createVariants(product.id, processedVariants);
     }
 
     return this.getProductById(userId, product.id);
   }
-
+  
   private generateVariantSKU(
     productName: string,
     attributes: Record<string, any>

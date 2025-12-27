@@ -1,92 +1,250 @@
-import { Injectable } from '@nestjs/common';
+// src/modules/upload/upload.service.ts
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
-import * as mime from 'mime-types';
-import { r2Client } from 'src/config/r2.config';
 import { ConfigService } from '@nestjs/config';
+import sharp from 'sharp';
+import slugify from 'slugify';
+import { r2Client } from 'src/config/r2.config';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { SubscriptionPlan, PLAN_FEATURES } from 'src/common/constants/subscription-plan.constants';
 
 type BucketType = 'avatars' | 'products';
 
+interface OptimizationConfig {
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+  format: 'jpeg' | 'webp' | 'png';
+  maxSizeKB: number;
+}
+
 @Injectable()
 export class UploadService {
-  constructor(private config: ConfigService) {}
+  constructor(
+    private config: ConfigService,
+    private subscriptionService: SubscriptionService,
+  ) {}
 
   /**
-   * Sube un archivo a R2
-   * @param file - Archivo a subir
-   * @param bucketType - Tipo de bucket ('avatars' o 'products')
-   * @param userId - ID del usuario
-   * @returns URL pública del archivo
+   * Obtiene configuración de optimización según plan
    */
-  async uploadFile(
-    file: Express.Multer.File,
+  private getOptimizationConfig(
+    plan: SubscriptionPlan,
     bucketType: BucketType,
-    userId: string,
-  ): Promise<string> {
-    const extension = mime.extension(file.mimetype) || 'bin';
-    const fileName = `${userId}/${uuidv4()}.${extension}`;
+  ): OptimizationConfig {
+    const features = this.subscriptionService.getPlanFeatures(plan);
 
-    // Obtener configuración del bucket según el tipo
-    const bucketConfig = this.config.get(`r2.buckets.${bucketType}`);
-    const bucketName = bucketConfig.name;
-    const publicUrl = bucketConfig.publicUrl;
+    if (bucketType === 'avatars') {
+      return {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 85,
+        format: 'webp',
+        maxSizeKB: 100,
+      };
+    }
 
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: fileName,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ContentDisposition: 'inline',
-      // R2 no soporta ACL en PutObjectCommand
-      // El acceso público se configura desde Cloudflare Dashboard
-    });
-
-    await r2Client.send(command);
-
-    // Retorna URL pública con subdominio personalizado
-    // Ejemplo: https://cdn.qhatupe.com/user-id/file.jpg
-    return `${publicUrl}/${fileName}`;
+    // Para productos, usar configuración del plan
+    return {
+      maxWidth: features.imageMaxWidth,
+      maxHeight: features.imageMaxHeight,
+      quality: features.imageQuality,
+      format: 'webp',
+      maxSizeKB: features.maxImageSizeKB,
+    };
   }
 
   /**
-   * Sube múltiples archivos a R2
-   * @param files - Archivos a subir
-   * @param bucketType - Tipo de bucket ('avatars' o 'products')
-   * @param userId - ID del usuario
-   * @returns Array de URLs públicas
+   * Sube múltiples archivos validando límites del plan
    */
   async uploadFiles(
     files: Express.Multer.File[],
     bucketType: BucketType,
-    userId: string,
+    username: string,
+    plan: SubscriptionPlan = 'BASIC',
   ): Promise<string[]> {
-    const uploadedUrls: string[] = [];
-
-    for (const file of files) {
-      const url = await this.uploadFile(file, bucketType, userId);
-      uploadedUrls.push(url);
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No se han proporcionado archivos');
     }
 
-    return uploadedUrls;
+    // Validar límite del plan
+    this.subscriptionService.validateFileUpload(plan, files.length);
+
+    const uploadPromises = files.map((file) =>
+      this.uploadFile(file, bucketType, username, plan),
+    );
+
+    return Promise.all(uploadPromises);
   }
 
   /**
-   * Sube un archivo de avatar (atajo para uploadFile con bucket 'avatars')
+   * Sube un archivo a R2 con optimización automática
    */
-  async uploadAvatar(
+  async uploadFile(
     file: Express.Multer.File,
-    userId: string,
+    bucketType: BucketType,
+    username: string,
+    plan: SubscriptionPlan = 'BASIC',
   ): Promise<string> {
-    return this.uploadFile(file, 'avatars', userId);
+    this.validateFile(file);
+
+    const optimizationConfig = this.getOptimizationConfig(plan, bucketType);
+    const optimizedBuffer = await this.optimizeImage(
+      file.buffer,
+      file.mimetype,
+      optimizationConfig,
+    );
+
+    const fileName = this.generateFileName(file.originalname, username, optimizationConfig.format);
+    const bucketConfig = this.config.get(`r2.buckets.${bucketType}`);
+
+    const command = new PutObjectCommand({
+      Bucket: bucketConfig.name,
+      Key: fileName,
+      Body: optimizedBuffer,
+      ContentType: `image/${optimizationConfig.format}`,
+      ContentDisposition: 'inline',
+      CacheControl: 'public, max-age=31536000, immutable',
+      Metadata: {
+        originalName: file.originalname,
+        originalSize: file.size.toString(),
+        optimizedSize: optimizedBuffer.length.toString(),
+        uploadedBy: username,
+        uploadedAt: new Date().toISOString(),
+        plan: plan,
+      },
+    });
+
+    await r2Client.send(command);
+
+    const compressionRatio = this.getCompressionRatio(file.size, optimizedBuffer.length);
+    console.log(
+      `✅ [${plan}] Imagen optimizada: ${this.formatBytes(file.size)} → ${this.formatBytes(optimizedBuffer.length)} (${compressionRatio}% reducción)`,
+    );
+
+    return `${bucketConfig.publicUrl}/${fileName}`;
   }
 
-  /**
-   * Sube archivos de productos (atajo para uploadFiles con bucket 'products')
-   */
+  private async optimizeImage(
+    buffer: Buffer,
+    mimetype: string,
+    config: OptimizationConfig,
+  ): Promise<Buffer> {
+    try {
+      let image = sharp(buffer);
+
+      if (mimetype === 'image/heic') {
+        image = sharp(buffer).jpeg();
+      }
+
+      const metadata = await image.metadata();
+      image = image.rotate();
+
+      const needsResize =
+        metadata.width > config.maxWidth || metadata.height > config.maxHeight;
+
+      if (needsResize) {
+        image = image.resize(config.maxWidth, config.maxHeight, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+      }
+
+      image = image.webp({
+        quality: config.quality,
+        effort: 4,
+      });
+
+      let optimized = await image.toBuffer();
+      const targetSizeBytes = config.maxSizeKB * 1024;
+      let quality = config.quality;
+
+      while (optimized.length > targetSizeBytes && quality > 60) {
+        quality -= 5;
+        optimized = await sharp(buffer)
+          .rotate()
+          .resize(config.maxWidth, config.maxHeight, {
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality })
+          .toBuffer();
+      }
+
+      return optimized;
+    } catch (error) {
+      throw new BadRequestException(
+        'No se pudo procesar la imagen. Asegúrate de que sea un archivo válido.',
+      );
+    }
+  }
+
+  private validateFile(file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No se ha proporcionado ningún archivo');
+    }
+
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/heic',
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'El archivo debe ser una imagen (JPEG, PNG, WebP o HEIC)',
+      );
+    }
+
+    if (file.size === 0) {
+      throw new BadRequestException('El archivo está vacío');
+    }
+  }
+
+  private generateFileName(originalName: string, username: string, extension: string): string {
+    const baseName = this.normalizeFilename(originalName);
+    const uniqueSuffix = this.shortId();
+    return `${username}/${baseName}-${uniqueSuffix}.${extension}`;
+  }
+
+  private normalizeFilename(originalName: string): string {
+    const name = originalName.replace(/\.[^/.]+$/, '');
+    return slugify(name, {
+      lower: true,
+      strict: true,
+      trim: true,
+      locale: 'es',
+    });
+  }
+
+  private shortId(length = 8): string {
+    return Math.random().toString(36).substring(2, 2 + length);
+  }
+
+  private getCompressionRatio(original: number, optimized: number): number {
+    return Math.round(((original - optimized) / original) * 100);
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  // Atajos
+  async uploadAvatar(file: Express.Multer.File, username: string): Promise<string> {
+    return this.uploadFile(file, 'avatars', username, 'BASIC');
+  }
+
   async uploadProductImages(
     files: Express.Multer.File[],
-    userId: string,
+    username: string,
+    plan: SubscriptionPlan = 'BASIC',
   ): Promise<string[]> {
-    return this.uploadFiles(files, 'products', userId);
+    return this.uploadFiles(files, 'products', username, plan);
   }
 }
