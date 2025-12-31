@@ -19,117 +19,6 @@ export class CouponsService {
     private subscriptionService: SubscriptionService
   ) { }
 
-  async create(userId: string, createCouponDto: CreateCouponDto) {
-    // Verificar límite de cupones según plan
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true },
-    });
-
-    // Validar que el plan tenga acceso a cupones
-    const planFeatures = this.subscriptionService.getPlanFeatures(user.plan);
-
-    if (!planFeatures.canUseCoupons) {
-      const nextPlan = this.subscriptionService.getNextPlan(user.plan);
-      throw new BadRequestException(
-        `Los cupones no están disponibles en tu plan ${user.plan}. ${nextPlan ? `Actualiza a ${nextPlan} para usar esta función.` : ''
-        }`,
-      );
-    }
-
-    const activeCoupons = await this.prisma.coupon.count({
-      where: {
-        userId,
-        status: CouponStatus.ACTIVE,
-      },
-    });
-
-    // Validar límite de cupones activos
-    try {
-      this.subscriptionService.validateResourceLimit(
-        user.plan,
-        'maxActiveCoupons',
-        activeCoupons,
-      );
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-
-    // Verificar que el código no exista ya para este vendedor
-    const existingCoupon = await this.prisma.coupon.findFirst({
-      where: {
-        userId,
-        code: createCouponDto.code.toUpperCase(),
-      },
-    });
-
-    if (existingCoupon) {
-      throw new ConflictException('Ya existe un cupón con este código');
-    }
-
-    // Validar productos si se especifican
-    if (createCouponDto.productIds && createCouponDto.productIds.length > 0) {
-      const products = await this.prisma.product.findMany({
-        where: {
-          id: { in: createCouponDto.productIds },
-          userId,
-        },
-      });
-
-      if (products.length !== createCouponDto.productIds.length) {
-        throw new BadRequestException('Uno o más productos no son válidos');
-      }
-    }
-
-    // Validar fechas
-    const startDate = new Date(createCouponDto.startDate);
-    const endDate = new Date(createCouponDto.endDate);
-
-    if (endDate <= startDate) {
-      throw new BadRequestException(
-        'La fecha de fin debe ser posterior a la fecha de inicio',
-      );
-    }
-
-    // Validar valores según tipo de descuento
-    if (createCouponDto.discountType === 'PERCENTAGE') {
-      if (
-        createCouponDto.discountValue <= 0 ||
-        createCouponDto.discountValue > 100
-      ) {
-        throw new BadRequestException(
-          'El porcentaje debe estar entre 1 y 100',
-        );
-      }
-    } else {
-      if (createCouponDto.discountValue <= 0) {
-        throw new BadRequestException('El descuento debe ser mayor a 0');
-      }
-    }
-
-    const coupon = await this.prisma.coupon.create({
-      data: {
-        userId,
-        code: createCouponDto.code.toUpperCase(),
-        discountType: createCouponDto.discountType,
-        discountValue: createCouponDto.discountValue,
-        minPurchase: createCouponDto.minPurchase,
-        maxDiscount: createCouponDto.maxDiscount,
-        usageLimit: createCouponDto.usageLimit,
-        productIds: createCouponDto.productIds || [],
-        startDate,
-        endDate,
-        status: CouponStatus.ACTIVE,
-      },
-      include: {
-        _count: {
-          select: { orders: true },
-        },
-      },
-    });
-
-    return coupon;
-  }
 
   async update(
     userId: string,
@@ -264,8 +153,135 @@ export class CouponsService {
   }
 
   /**
-   * Activar/Desactivar cupón rápidamente
-   * Útil para lives: "¡Activando cupón LIVE10 ahora!"
+   * Método mejorado para crear cupones con soporte temporal
+   */
+  async create(userId: string, createCouponDto: CreateCouponDto) {
+    // Verificar límite de cupones según plan
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true },
+    });
+
+    const planFeatures = this.subscriptionService.getPlanFeatures(user.plan);
+
+    if (!planFeatures.canUseCoupons) {
+      const nextPlan = this.subscriptionService.getNextPlan(user.plan);
+      throw new BadRequestException(
+        `Los cupones no están disponibles en tu plan ${user.plan}. ${nextPlan ? `Actualiza a ${nextPlan} para usar esta función.` : ''
+        }`,
+      );
+    }
+
+    const activeCoupons = await this.prisma.coupon.count({
+      where: {
+        userId,
+        status: CouponStatus.ACTIVE,
+      },
+    });
+
+    try {
+      this.subscriptionService.validateResourceLimit(
+        user.plan,
+        'maxActiveCoupons',
+        activeCoupons,
+      );
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+
+    // Verificar que el código no exista
+    const existingCoupon = await this.prisma.coupon.findFirst({
+      where: {
+        userId,
+        code: createCouponDto.code.toUpperCase(),
+      },
+    });
+
+    if (existingCoupon) {
+      throw new ConflictException('Ya existe un cupón con este código');
+    }
+
+    // Validar productos si se especifican
+    if (createCouponDto.productIds && createCouponDto.productIds.length > 0) {
+      const products = await this.prisma.product.findMany({
+        where: {
+          id: { in: createCouponDto.productIds },
+          userId,
+        },
+      });
+
+      if (products.length !== createCouponDto.productIds.length) {
+        throw new BadRequestException('Uno o más productos no son válidos');
+      }
+    }
+
+    // Validar valores según tipo de descuento
+    if (createCouponDto.discountType === 'PERCENTAGE') {
+      if (
+        createCouponDto.discountValue <= 0 ||
+        createCouponDto.discountValue > 100
+      ) {
+        throw new BadRequestException('El porcentaje debe estar entre 1 y 100');
+      }
+    } else {
+      if (createCouponDto.discountValue <= 0) {
+        throw new BadRequestException('El descuento debe ser mayor a 0');
+      }
+    }
+
+    // Determinar fechas según el tipo de cupón
+    let startDate: Date;
+    let endDate: Date;
+    let status: CouponStatus;
+
+    if (createCouponDto.isTemporary) {
+      // Cupón temporal: se crea DESACTIVADO y se activa manualmente
+      // Las fechas se establecerán cuando se active
+      startDate = new Date(); // Fecha actual como referencia
+      endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 año en el futuro (placeholder)
+      status = CouponStatus.DISABLED; // Comienza desactivado
+    } else {
+      // Cupón tradicional con fechas fijas
+      startDate = new Date(createCouponDto.startDate);
+      endDate = new Date(createCouponDto.endDate);
+
+      if (endDate <= startDate) {
+        throw new BadRequestException(
+          'La fecha de fin debe ser posterior a la fecha de inicio',
+        );
+      }
+      status = CouponStatus.ACTIVE;
+    }
+
+    const coupon = await this.prisma.coupon.create({
+      data: {
+        userId,
+        code: createCouponDto.code.toUpperCase(),
+        discountType: createCouponDto.discountType,
+        discountValue: createCouponDto.discountValue,
+        minPurchase: createCouponDto.minPurchase,
+        maxDiscount: createCouponDto.maxDiscount,
+        usageLimit: createCouponDto.usageLimit,
+        productIds: createCouponDto.productIds || [],
+        isTemporary: createCouponDto.isTemporary || false,
+        temporaryDurationMinutes: createCouponDto.temporaryDurationMinutes,
+        startDate,
+        endDate,
+        status,
+      },
+      include: {
+        _count: {
+          select: { orders: true },
+        },
+      },
+    });
+
+    return coupon;
+  }
+
+  /**
+   * Toggle mejorado para cupones temporales
+   * Si es temporal, activa el temporizador cuando se active
    */
   async toggleStatus(userId: string, couponId: string) {
     const coupon = await this.prisma.coupon.findUnique({
@@ -277,16 +293,65 @@ export class CouponsService {
     }
 
     if (coupon.userId !== userId) {
-      throw new ForbiddenException(
-        'No tienes permiso para modificar este cupón',
-      );
+      throw new ForbiddenException('No tienes permiso para modificar este cupón');
     }
 
-    // Verificar si el cupón está expirado
-    if (new Date() > coupon.endDate) {
-      throw new BadRequestException(
-        'No puedes activar un cupón expirado',
-      );
+    const now = new Date();
+
+    // Si es temporal y se está activando
+    if (coupon.isTemporary && coupon.status === CouponStatus.DISABLED) {
+      // Calcular nueva fecha de expiración
+      const durationMs = coupon.temporaryDurationMinutes * 60 * 1000;
+      const newEndDate = new Date(now.getTime() + durationMs);
+
+      const updatedCoupon = await this.prisma.coupon.update({
+        where: { id: couponId },
+        data: {
+          status: CouponStatus.ACTIVE,
+          activatedAt: now,
+          startDate: now,
+          endDate: newEndDate,
+        },
+        include: {
+          _count: {
+            select: { orders: true },
+          },
+        },
+      });
+
+      // Programar desactivación automática
+      this.scheduleAutomaticDeactivation(couponId, coupon.temporaryDurationMinutes);
+
+      return {
+        ...updatedCoupon,
+        message: `Cupón activado. Expirará en ${coupon.temporaryDurationMinutes} minutos`,
+        expiresAt: newEndDate,
+      };
+    }
+
+    // Si es temporal y ya está activo, desactivar
+    if (coupon.isTemporary && coupon.status === CouponStatus.ACTIVE) {
+      const updatedCoupon = await this.prisma.coupon.update({
+        where: { id: couponId },
+        data: {
+          status: CouponStatus.DISABLED,
+        },
+        include: {
+          _count: {
+            select: { orders: true },
+          },
+        },
+      });
+
+      return {
+        ...updatedCoupon,
+        message: 'Cupón temporal desactivado',
+      };
+    }
+
+    // Cupón tradicional (comportamiento original)
+    if (!coupon.isTemporary && now > coupon.endDate) {
+      throw new BadRequestException('No puedes activar un cupón expirado');
     }
 
     const newStatus =
@@ -311,8 +376,34 @@ export class CouponsService {
   }
 
   /**
-   * Validar un cupón antes de aplicarlo
-   * Endpoint público para que el cliente verifique si el cupón es válido
+   * Programa la desactivación automática de un cupón temporal
+   */
+  private scheduleAutomaticDeactivation(couponId: string, durationMinutes: number) {
+    const durationMs = durationMinutes * 60 * 1000;
+
+    setTimeout(async () => {
+      try {
+        const coupon = await this.prisma.coupon.findUnique({
+          where: { id: couponId },
+        });
+
+        // Solo desactivar si sigue activo
+        if (coupon && coupon.status === CouponStatus.ACTIVE) {
+          await this.prisma.coupon.update({
+            where: { id: couponId },
+            data: { status: CouponStatus.EXPIRED },
+          });
+
+          console.log(`Cupón temporal ${coupon.code} expirado automáticamente`);
+        }
+      } catch (error) {
+        console.error('Error al desactivar cupón temporal:', error);
+      }
+    }, durationMs);
+  }
+
+  /**
+   * Validar cupón mejorado - considera cupones temporales
    */
   async validateCoupon(
     username: string,
@@ -328,13 +419,13 @@ export class CouponsService {
       throw new NotFoundException('Tienda no encontrada');
     }
 
+    const now = new Date();
+
     const coupon = await this.prisma.coupon.findFirst({
       where: {
         userId: user.id,
         code: code.toUpperCase(),
         status: CouponStatus.ACTIVE,
-        startDate: { lte: new Date() },
-        endDate: { gte: new Date() },
       },
     });
 
@@ -342,6 +433,14 @@ export class CouponsService {
       return {
         valid: false,
         message: 'Cupón no válido o expirado',
+      };
+    }
+
+    // Validar fecha de expiración (funciona para temporales y tradicionales)
+    if (now < coupon.startDate || now > coupon.endDate) {
+      return {
+        valid: false,
+        message: 'Cupón expirado',
       };
     }
 
@@ -388,6 +487,17 @@ export class CouponsService {
 
     discount = Math.min(discount, subtotal);
 
+    // Si es temporal, mostrar tiempo restante
+    let timeRemaining = null;
+    if (coupon.isTemporary && coupon.activatedAt) {
+      const remainingMs = coupon.endDate.getTime() - now.getTime();
+      const remainingMinutes = Math.max(0, Math.floor(remainingMs / (60 * 1000)));
+      timeRemaining = {
+        minutes: remainingMinutes,
+        formatted: `${remainingMinutes} min restantes`,
+      };
+    }
+
     return {
       valid: true,
       message: 'Cupón aplicado exitosamente',
@@ -395,9 +505,11 @@ export class CouponsService {
         code: coupon.code,
         discountType: coupon.discountType,
         discountValue: coupon.discountValue,
+        isTemporary: coupon.isTemporary,
       },
       discount,
       newTotal: subtotal - discount,
+      ...(timeRemaining && { timeRemaining }),
     };
   }
 

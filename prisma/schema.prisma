@@ -381,6 +381,10 @@ model Coupon {
   // Estado
   status CouponStatus @default(ACTIVE)
 
+  isTemporary              Boolean   @default(false)
+  temporaryDurationMinutes Int?
+  activatedAt              DateTime? 
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
