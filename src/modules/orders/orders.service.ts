@@ -184,6 +184,10 @@ export class OrdersService {
    * Crea una orden real en la base de datos
    * (El vendedor confirma que la venta se realizó)
    */
+  /**
+   * Crea una orden real en la base de datos
+   * (El vendedor confirma que la venta se realizó)
+   */
   async create(createOrderDto: CreateOrderDto) {
     const { items, couponCode, customerInfo, paymentMethod } = createOrderDto;
 
@@ -195,7 +199,20 @@ export class OrdersService {
         userId: createOrderDto.storeUserId,
         isActive: true,
       },
-      include: { variants: true },
+      include: {
+        variants: true,
+        user: {
+          select: {
+            username: true,
+            storeProfile: {
+              select: {
+                storeName: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (products.length !== productIds.length) {
@@ -204,6 +221,7 @@ export class OrdersService {
 
     let subtotal = 0;
     const orderItems = [];
+    const itemsDetails = []; // Para el mensaje de WhatsApp
 
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
@@ -239,11 +257,21 @@ export class OrdersService {
         unitPrice: price,
         subtotal: itemSubtotal,
       });
+
+      // Para el mensaje de WhatsApp
+      itemsDetails.push({
+        name: product.name,
+        variant: variantName,
+        price,
+        quantity: item.quantity,
+        subtotalItem: itemSubtotal,
+      });
     }
 
     // Aplicar cupón
     let discount = 0;
     let couponId = null;
+    let couponInfo = null;
 
     if (couponCode) {
       const coupon = await this.validateAndGetCoupon(
@@ -256,6 +284,10 @@ export class OrdersService {
       if (coupon) {
         discount = this.calculateDiscount(coupon, subtotal);
         couponId = coupon.id;
+        couponInfo = {
+          code: coupon.code,
+          discount,
+        };
       }
     }
 
@@ -326,9 +358,73 @@ export class OrdersService {
 
       return newOrder;
     });
+
     await this.notificationsService.notifyNewOrder(order.id);
 
-    return order;
+    // Generar mensaje de WhatsApp para confirmación
+    const sellerUsername = products[0].user.username;
+    const storeName = products[0].user.storeProfile?.storeName || sellerUsername;
+    const storePhone = products[0].user.storeProfile?.phone;
+
+    // Construir mensaje de WhatsApp con el número de orden
+    let message = `✅ *Pedido Confirmado #${orderNumber}*\n\n`;
+    message += `¡Hola *${storeName}*! Tu pedido ha sido registrado:\n\n`;
+
+    itemsDetails.forEach((item, index) => {
+      message += `📦 *Producto ${index + 1}:* ${item.name}\n`;
+      if (item.variant) {
+        message += `   📏 Variante: ${item.variant}\n`;
+      }
+      message += `   💰 Precio: S/. ${item.price.toFixed(2)}\n`;
+      message += `   🔢 Cantidad: ${item.quantity}\n`;
+      message += `   💵 Subtotal: S/. ${item.subtotalItem.toFixed(2)}\n\n`;
+    });
+
+    message += `━━━━━━━━━━━━━━━━\n`;
+    message += `💰 *Subtotal:* S/. ${subtotal.toFixed(2)}\n`;
+
+    if (couponInfo) {
+      message += `🎟️ *Cupón ${couponInfo.code}:* -S/. ${couponInfo.discount.toFixed(2)}\n`;
+    }
+
+    message += `✨ *TOTAL:* S/. ${total.toFixed(2)}\n`;
+    message += `━━━━━━━━━━━━━━━━\n\n`;
+
+    if (customerInfo) {
+      message += `👤 *Cliente:* ${customerInfo.name}\n`;
+      if (customerInfo.phone) {
+        message += `📱 *Teléfono:* ${customerInfo.phone}\n`;
+      }
+      if (customerInfo.address) {
+        message += `📍 *Dirección:* ${customerInfo.address}\n`;
+      }
+    }
+
+    message += `\n🌐 Ver productos: https://qhatu.pe/${sellerUsername}`;
+
+    // Generar link de WhatsApp
+    const whatsappNumber = storePhone || '';
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+    return {
+      order,
+      whatsappLink,
+      message,
+      orderSummary: {
+        orderNumber,
+        items: itemsDetails,
+        subtotal,
+        discount,
+        total,
+        coupon: couponInfo,
+        seller: {
+          username: sellerUsername,
+          storeName,
+          phone: storePhone,
+        },
+      },
+    };
   }
 
   async updateStatus(
