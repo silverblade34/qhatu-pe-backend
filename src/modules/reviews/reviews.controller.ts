@@ -1,5 +1,3 @@
-// src/modules/reviews/reviews.controller.ts
-
 import {
   Controller,
   Get,

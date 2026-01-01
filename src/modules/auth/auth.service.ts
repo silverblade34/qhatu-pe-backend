@@ -82,6 +82,7 @@ export class AuthService {
             bio: `¡Bienvenido a ${registerDto.storeName}! 🛍️`,
             logo: logoUrl,
             isActive: true,
+            categoryId: registerDto.categoryId,
           },
         },
       },
