@@ -1,11 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { ResponseInterceptor } from './common/response/response.interceptor';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AllExceptionsFilter } from './common/http-exception/http-exception';
+import helmet from 'helmet';
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Seguridad
+  app.use(helmet());
+
+  // Compresión GZIP
+  app.use(compression());
 
   app.enableCors({
     origin: '*',

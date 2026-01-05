@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../../database/prisma.service';
 import { AvatarService } from '../avatar/avatar.service';
 import { RegisterSellerDto } from './dto/register-seller.dto';
@@ -12,6 +13,7 @@ import { MailService } from '../mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PasswordResetService } from './services/password-reset.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 @Injectable()
 export class AuthService {
   constructor(
@@ -21,6 +23,7 @@ export class AuthService {
     private avatarService: AvatarService,
     private mailService: MailService,
     private passwordResetService: PasswordResetService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
 
   // REGISTRO DE VENDEDORES
@@ -91,6 +94,8 @@ export class AuthService {
       },
     });
 
+    await this.invalidateStoresCache(user.username, registerDto.categoryId);
+
     const tokens = await this.generateTokens(user.id, user.username, user.role);
 
     this.mailService
@@ -103,6 +108,60 @@ export class AuthService {
       storeUrl: `https://qhatu.pe/${user.username}`,
       ...tokens,
     };
+  }
+
+  /**
+  * Invalida todo el cache relacionado con tiendas
+  */
+  private async invalidateStoresCache(username: string, categoryId?: string): Promise<void> {
+    try {
+      const patterns = [
+        'stores_search:*',        // Búsquedas de tiendas
+        'stores_featured:*',      // Tiendas destacadas
+        `store_profile:${username}:*`, // Perfil de esta tienda
+      ];
+
+      // Si hay categoría, invalida también el cache de esa categoría
+      if (categoryId) {
+        patterns.push(`stores_by_category:${categoryId}:*`);
+      }
+
+      const stores: any = this.cacheManager.stores;
+      if (!stores || stores.length === 0) return;
+
+      const store = stores[0];
+      const client = store.client || store.getClient?.();
+
+      if (!client) {
+        console.warn('No se pudo obtener cliente Redis para invalidación');
+        return;
+      }
+
+      for (const pattern of patterns) {
+        let cursor = '0';
+        let keysDeleted = 0;
+
+        do {
+          const result = await client.scan(cursor, {
+            MATCH: pattern,
+            COUNT: 100,
+          });
+
+          cursor = result.cursor;
+
+          if (result.keys.length > 0) {
+            await Promise.all(result.keys.map((key: string) => this.cacheManager.del(key)));
+            keysDeleted += result.keys.length;
+          }
+        } while (cursor !== '0');
+
+        if (keysDeleted > 0) {
+          console.log(`Cache invalidado: ${keysDeleted} keys de ${pattern}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error invalidando cache de tiendas:', error);
+    }
   }
 
   // REGISTRO DE CLIENTES

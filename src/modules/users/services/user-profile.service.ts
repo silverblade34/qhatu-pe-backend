@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class UserProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) { }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({
@@ -52,11 +57,67 @@ export class UserProfileService {
         });
       }
     }
+    if (user.role === 'SELLER' && updatedProfile) {
+      await this.invalidateStoresCache(
+        user.username,
+        user.storeProfile?.categoryId
+      );
+    }
 
     return {
       user: updatedUser,
       storeProfile: updatedProfile,
     };
+  }
+
+  /**
+  * Invalida cache de tiendas
+  */
+  private async invalidateStoresCache(username: string, categoryId?: string): Promise<void> {
+    try {
+      const patterns = [
+        'stores_search:*',
+        'stores_featured:*',
+        `store_profile:${username}:*`,
+      ];
+
+      if (categoryId) {
+        patterns.push(`stores_by_category:${categoryId}:*`);
+      }
+
+      const stores: any = this.cacheManager.stores;
+      if (!stores || stores.length === 0) return;
+
+      const store = stores[0];
+      const client = store.client || store.getClient?.();
+
+      if (!client) return;
+
+      for (const pattern of patterns) {
+        let cursor = '0';
+        let keysDeleted = 0;
+
+        do {
+          const result = await client.scan(cursor, {
+            MATCH: pattern,
+            COUNT: 100,
+          });
+
+          cursor = result.cursor;
+
+          if (result.keys.length > 0) {
+            await Promise.all(result.keys.map((key: string) => this.cacheManager.del(key)));
+            keysDeleted += result.keys.length;
+          }
+        } while (cursor !== '0');
+
+        if (keysDeleted > 0) {
+          console.log(`Cache invalidado: ${keysDeleted} keys de ${pattern}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error invalidando cache de tiendas:', error);
+    }
   }
 
   async initializeProfile(userId: string) {

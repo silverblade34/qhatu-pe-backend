@@ -22,13 +22,19 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import r2Config from './config/r2.config';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisConfig } from './config/redis.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, jwtConfig, awsConfig, emailConfig, r2Config],
-      envFilePath: '.env',
+      envFilePath: '.env.local',
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: redisConfig,
     }),
     ScheduleModule.forRoot(),
     DatabaseModule,

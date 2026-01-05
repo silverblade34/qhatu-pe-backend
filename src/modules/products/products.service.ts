@@ -143,7 +143,7 @@ export class ProductsService {
 
     return this.getProductById(userId, product.id);
   }
-  
+
   private generateVariantSKU(
     productName: string,
     attributes: Record<string, any>
@@ -500,6 +500,7 @@ export class ProductsService {
   async getPublicProducts(username: string, filters: FilterProductDto) {
     const user = await this.prisma.user.findUnique({
       where: { username: username.toLowerCase() },
+      select: { id: true },
     });
 
     if (!user) {
@@ -538,18 +539,32 @@ export class ProductsService {
       };
     }
 
-    const products = await this.prisma.product.findMany({
-      where,
-      include: {
-        images: { orderBy: { order: 'asc' }, take: 1 },
-        category: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: filters.limit || 20,
-      skip: filters.offset || 0,
-    });
-
-    const total = await this.prisma.product.count({ where });
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          stock: true,
+          isFlashSale: true,
+          isFeatured: true,
+          images: {
+            select: { url: true },
+            orderBy: { order: 'asc' },
+            take: 1,
+          },
+          category: {
+            select: { name: true, slug: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: filters.limit || 20,
+        skip: filters.offset || 0,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
 
     return {
       data: products,
