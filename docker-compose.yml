@@ -17,10 +17,11 @@ services:
     networks:
       - qhatu-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 5s
 
   v1:
     build:
@@ -34,11 +35,11 @@ services:
     container_name: qhatupe-backend-app
     environment:
       - PORT=4000
+      - NODE_ENV=production
     networks:
       - qhatu-network
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
 
 volumes:
   redis-data:
