@@ -14,6 +14,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PasswordResetService } from './services/password-reset.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { GoogleAuthService } from './services/google-auth.service';
+import { GoogleRegisterDto } from './dto/google-register.dto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -22,6 +24,7 @@ export class AuthService {
     private config: ConfigService,
     private avatarService: AvatarService,
     private mailService: MailService,
+    private googleAuthService: GoogleAuthService,
     private passwordResetService: PasswordResetService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
@@ -231,50 +234,107 @@ export class AuthService {
   }
 
   // REGISTRO RÁPIDO CON GOOGLE
-  async quickRegisterWithGoogle(quickRegisterDto: QuickRegisterDto) {
-    let user = await this.prisma.user.findUnique({
-      where: { email: quickRegisterDto.email.toLowerCase() },
+  /**
+    * Registro o Login con Google OAuth
+    * - Si el usuario existe → Login
+    * - Si no existe → Registro automático
+    */
+  async registerWithGoogle(dto: GoogleRegisterDto) {
+    // 1. VERIFICAR TOKEN DE GOOGLE (esto previene ataques)
+    const googleUser = await this.googleAuthService.verifyIdToken(dto.idToken);
+
+    // 2. Buscar si el usuario ya existe
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: googleUser.email.toLowerCase() },
+          { googleId: googleUser.googleId },
+        ],
+      },
+      include: {
+        storeProfile: true,
+      },
     });
 
+    // 3. Si el usuario existe → LOGIN
     if (user) {
+      // Actualizar googleId si no lo tenía
+      if (!user.googleId) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: googleUser.googleId },
+          include: { storeProfile: true },
+        });
+      }
+
       const tokens = await this.generateTokens(user.id, user.username, user.role);
+
       return {
-        message: 'Inicio de sesión exitoso',
+        message: 'Inicio de sesión exitoso con Google',
         user: this.sanitizeUser(user),
+        isNewUser: false,
         ...tokens,
       };
     }
 
-    const username = await this.generateUniqueUsername(quickRegisterDto.email);
+    // 4. Si NO existe → REGISTRO AUTOMÁTICO
+    const username = await this.generateUniqueUsername(googleUser.email);
 
-    let avatarUrl: string;
-    if (quickRegisterDto.picture) {
-      avatarUrl = quickRegisterDto.picture;
-    } else {
-      const randomAvatar = this.avatarService.getRandomAvatar();
-      avatarUrl = randomAvatar?.url || await this.avatarService.generateAndUploadInitialsAvatar(quickRegisterDto.fullName);
-    }
+    // Usar foto de Google o generar avatar
+    const avatarUrl = googleUser.picture ||
+      await this.avatarService.generateAndUploadInitialsAvatar(googleUser.fullName);
+
+    // Determinar rol (por defecto CUSTOMER, pero puede ser SELLER)
+    const role = dto.role || 'CUSTOMER';
 
     user = await this.prisma.user.create({
       data: {
-        email: quickRegisterDto.email.toLowerCase(),
+        email: googleUser.email.toLowerCase(),
         username,
-        password: '',
-        fullName: quickRegisterDto.fullName,
+        password: '', // Sin password porque usa Google
+        fullName: googleUser.fullName,
         phone: '',
         plan: 'BASIC',
-        role: 'SELLER',
+        role,
         avatar: avatarUrl,
+        // ✅ SI viene de Google OAuth, el email YA está verificado
         isVerified: true,
+        verificationStatus: 'APPROVED',
+        googleId: googleUser.googleId,
+        // Si es SELLER, crear storeProfile básico
+        ...(role === 'SELLER' && {
+          storeProfile: {
+            create: {
+              storeName: googleUser.fullName,
+              bio: `¡Bienvenido a mi tienda! 🛍️`,
+              logo: avatarUrl,
+              isActive: false, // Inactiva hasta que complete el perfil
+            },
+          },
+        }),
+      },
+      include: {
+        storeProfile: true,
       },
     });
 
+    // Invalidar cache de tiendas si es vendedor
+    if (role === 'SELLER') {
+      await this.invalidateStoresCache(user.username);
+    }
+
     const tokens = await this.generateTokens(user.id, user.username, user.role);
+
+    // Enviar email de bienvenida
+    this.mailService
+      .sendWelcomeEmail(user.email, user.fullName, user.username)
+      .catch((error) => console.error('Error enviando bienvenida:', error));
 
     return {
       message: 'Registro exitoso con Google',
       user: this.sanitizeUser(user),
-      avatarUrl,
+      isNewUser: true,
+      needsProfileCompletion: role === 'SELLER', // Frontend puede redirigir a completar perfil
       ...tokens,
     };
   }

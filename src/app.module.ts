@@ -24,12 +24,13 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import r2Config from './config/r2.config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisConfig } from './config/redis.config';
+import googleAuthConfig from './config/google-auth.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, awsConfig, emailConfig, r2Config],
+      load: [databaseConfig, jwtConfig, awsConfig, emailConfig, r2Config, googleAuthConfig],
       envFilePath: '.env.local',
     }),
     CacheModule.registerAsync({

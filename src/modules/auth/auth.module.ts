@@ -11,6 +11,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { AvatarService } from '../avatar/avatar.service';
 import { MailModule } from '../mail/mail.module';
 import { PasswordResetService } from './services/password-reset.service';
+import { GoogleAuthService } from './services/google-auth.service';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { PasswordResetService } from './services/password-reset.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy,
-    LocalStrategy, AvatarService, PasswordResetService],
+    LocalStrategy, AvatarService, PasswordResetService, GoogleAuthService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule { }

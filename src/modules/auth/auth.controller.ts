@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Post, 
-  Get, 
-  Body, 
-  Query, 
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
   Param,
-  UseGuards 
+  UseGuards
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -19,11 +19,12 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { GoogleRegisterDto } from './dto/google-register.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // ============================================
   // REGISTRO
@@ -45,9 +46,12 @@ export class AuthController {
 
   @Public()
   @Post('register/google')
-  @ApiOperation({ summary: 'Registro/Login rápido con Google' })
-  async quickRegister(@Body() quickRegisterDto: QuickRegisterDto) {
-    return this.authService.quickRegisterWithGoogle(quickRegisterDto);
+  @ApiOperation({
+    summary: 'Registro o login con Google OAuth',
+    description: 'Verifica el token de Google y crea/autentica al usuario'
+  })
+  async registerWithGoogle(@Body() dto: GoogleRegisterDto) {
+    return this.authService.registerWithGoogle(dto);
   }
 
   // ============================================

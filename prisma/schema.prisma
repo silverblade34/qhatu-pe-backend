@@ -70,17 +70,20 @@ enum VerificationStatus {
 // ============================================
 // USER & AUTHENTICATION
 // ============================================
-
 model User {
   id                  String    @id @default(uuid())
   email               String    @unique
   username            String    @unique
-  password            String
+  password            String    // Vacío para usuarios OAuth
   fullName            String
   phone               String
   avatar              String?
   resetPasswordToken  String?
   resetPasswordExpiry DateTime?
+
+  // Google OAuth
+  googleId            String?   @unique // ID único de Google
+  
   // Plan de suscripción
   plan                Plan      @default(BASIC)
   planExpiresAt       DateTime?
@@ -107,6 +110,7 @@ model User {
 
   @@index([username])
   @@index([email])
+  @@index([googleId])
   @@map("users")
 }
 
