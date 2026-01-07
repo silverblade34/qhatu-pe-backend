@@ -106,9 +106,9 @@ export class AuthService {
       .catch((error) => console.error('Error enviando bienvenida:', error));
 
     return {
-      message: '¡Tienda creada exitosamente! Bienvenido a Qhatu.pe',
+      message: '¡Tienda creada exitosamente! Bienvenido a QhatuPe',
       user: this.sanitizeUser(user),
-      storeUrl: `https://qhatu.pe/${user.username}`,
+      storeUrl: `https://qhatupe.com/${user.username}`,
       ...tokens,
     };
   }
@@ -351,7 +351,7 @@ export class AuthService {
 
     return {
       user: this.sanitizeUser(user),
-      storeUrl: user.storeProfile ? `https://qhatu.pe/${user.username}` : null,
+      storeUrl: user.storeProfile ? `https://qhatupe.com/${user.username}` : null,
       ...tokens,
     };
   }
@@ -420,7 +420,7 @@ export class AuthService {
     return {
       available: true,
       message: '¡Username disponible!',
-      url: `https://qhatu.pe/${username.toLowerCase()}`,
+      url: `https://qhatupe.com/${username.toLowerCase()}`,
     };
   }
 

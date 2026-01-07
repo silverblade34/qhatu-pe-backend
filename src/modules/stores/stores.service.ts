@@ -133,7 +133,7 @@ export class StoresService {
           totalProducts: store.products.length,
           hasOffers: store.coupons.length > 0,
         },
-        url: `https://qhatu.pe/${store.username}`,
+        url: `https://qhatupe.com/${store.username}`,
       };
     });
 
@@ -301,7 +301,7 @@ export class StoresService {
         badges: store.storeProfile.badges,
         rating: Math.round(avgRating * 10) / 10,
         totalProducts: store.products.length,
-        url: `https://qhatu.pe/${store.username}`,
+        url: `https://qhatupe.com/${store.username}`,
       };
     });
   }
@@ -369,7 +369,7 @@ export class StoresService {
         isVerified: user.isVerified,
         badges: user.storeProfile.badges,
         rating: Math.round(avgRating * 10) / 10,
-        url: `https://qhatu.pe/${user.username}`,
+        url: `https://qhatupe.com/${user.username}`,
       };
     });
 
