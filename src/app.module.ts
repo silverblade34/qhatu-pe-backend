@@ -31,7 +31,7 @@ import googleAuthConfig from './config/google-auth.config';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, jwtConfig, awsConfig, emailConfig, r2Config, googleAuthConfig],
-      envFilePath: '.env.local',
+      envFilePath: '.env',
     }),
     CacheModule.registerAsync({
       isGlobal: true,
