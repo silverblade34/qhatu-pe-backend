@@ -108,7 +108,7 @@ export class AuthService {
     return {
       message: '¡Tienda creada exitosamente! Bienvenido a QhatuPe',
       user: this.sanitizeUser(user),
-      storeUrl: `https://qhatupe.com/${user.username}`,
+      storeUrl: `https://www.qhatupe.com/${user.username}`,
       ...tokens,
     };
   }
@@ -351,7 +351,7 @@ export class AuthService {
 
     return {
       user: this.sanitizeUser(user),
-      storeUrl: user.storeProfile ? `https://qhatupe.com/${user.username}` : null,
+      storeUrl: user.storeProfile ? `https://www.qhatupe.com/${user.username}` : null,
       ...tokens,
     };
   }
@@ -420,7 +420,7 @@ export class AuthService {
     return {
       available: true,
       message: '¡Username disponible!',
-      url: `https://qhatupe.com/${username.toLowerCase()}`,
+      url: `https://www.qhatupe.com/${username.toLowerCase()}`,
     };
   }
 

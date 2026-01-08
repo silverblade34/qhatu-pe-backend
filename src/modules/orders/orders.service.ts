@@ -155,7 +155,7 @@ export class OrdersService {
       }
     }
 
-    message += `\n🌐 Ver productos: https://qhatupe.com/${sellerUsername}`;
+    message += `\n🌐 Ver productos: https://www.qhatupe.com/${sellerUsername}`;
 
     // Generar link de WhatsApp
     const whatsappNumber = storePhone || ''; // El teléfono debe incluirse
@@ -400,7 +400,7 @@ export class OrdersService {
       }
     }
 
-    message += `\n🌐 Ver productos: https://qhatupe.com/${sellerUsername}`;
+    message += `\n🌐 Ver productos: https://www.qhatupe.com/${sellerUsername}`;
 
     // Generar link de WhatsApp
     const whatsappNumber = storePhone || '';
