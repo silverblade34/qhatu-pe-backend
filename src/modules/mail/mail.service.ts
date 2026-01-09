@@ -136,6 +136,36 @@ export class MailService {
     }
   }
 
+  /**
+ * Enviar email de verificación con código de 4 dígitos
+ */
+  async sendVerificationEmail(email: string, name: string, code: string) {
+    if (!this.resend) {
+      this.logger.warn(`[DEV] Código de verificación para ${email}: ${code}`);
+      return null;
+    }
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: `${this.fromName} <${this.fromAddress}>`,
+        to: [email],
+        subject: '🔐 Verifica tu cuenta en QhatuPE',
+        html: this.getVerificationEmailTemplate(name, code),
+      });
+
+      if (error) {
+        this.logger.error('Error enviando email de verificación:', error);
+        throw error;
+      }
+
+      this.logger.log(`Email de verificación enviado a: ${email} (ID: ${data?.id})`);
+      return data;
+    } catch (error) {
+      this.logger.error('Error en sendVerificationEmail:', error);
+      throw error;
+    }
+  }
+
   // ===================================
   // TEMPLATES DE EMAIL
   // ===================================
@@ -167,7 +197,7 @@ export class MailService {
           box-shadow: 0 2px 8px rgba(38, 70, 83, 0.08);
         }
         .header { 
-          background: #e63946;
+          background: linear-gradient(135deg, #e63946 0%, #e95461ff 100%);
           color: white; 
           padding: 40px 30px; 
           text-align: center;
@@ -311,7 +341,7 @@ export class MailService {
           box-shadow: 0 2px 8px rgba(38, 70, 83, 0.08);
         }
         .header { 
-          background: #2a9d8f;
+          background: linear-gradient(135deg, #e63946 0%, #e95461ff 100%);
           color: white; 
           padding: 40px 30px; 
           text-align: center;
@@ -425,7 +455,7 @@ export class MailService {
           box-shadow: 0 2px 8px rgba(38, 70, 83, 0.08);
         }
         .header { 
-          background: linear-gradient(135deg, #e63946 0%, #f4a261 100%);
+          background: linear-gradient(135deg, #e63946 0%, #e95461ff 100%);
           color: white; 
           padding: 40px 30px; 
           text-align: center;
@@ -487,6 +517,144 @@ export class MailService {
             <strong>${storeUrl}</strong>
           </div>
           <p>Comienza a agregar productos y comparte tu tienda con tus clientes.</p>
+        </div>
+        <div class="footer">
+          <p><strong>QhatuPE</strong></p>
+          <p>Marketplace Peruano</p>
+          <p>© ${new Date().getFullYear()} QhatuPE. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  }
+
+  // Agrega este template en la sección de templates
+  private getVerificationEmailTemplate(name: string, code: string): string {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          line-height: 1.6; 
+          color: #264653; 
+          background-color: #f8f9fa;
+          padding: 20px;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background: #ffffff;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(38, 70, 83, 0.08);
+        }
+        .header { 
+          background: linear-gradient(135deg, #e63946 0%, #e95461ff 100%);
+          color: white; 
+          padding: 40px 30px; 
+          text-align: center;
+        }
+        .logo { 
+          font-size: 24px; 
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          margin-bottom: 8px;
+        }
+        .content { 
+          padding: 40px 30px; 
+        }
+        .content h2 { 
+          color: #264653; 
+          margin: 0 0 16px 0; 
+          font-size: 24px;
+          font-weight: 700;
+        }
+        .content p { 
+          margin: 12px 0; 
+          color: #264653; 
+          line-height: 1.6;
+        }
+        .code-container {
+          background: linear-gradient(135deg, #e63946 0%, #e95461ff 100%);
+          padding: 32px;
+          border-radius: 10px;
+          text-align: center;
+          margin: 32px 0;
+        }
+        .code {
+          font-size: 48px;
+          font-weight: 700;
+          letter-spacing: 12px;
+          color: white;
+          font-family: 'Courier New', monospace;
+        }
+        .code-label {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 14px;
+          margin-top: 12px;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+        }
+        .info-box { 
+          background: #f8f9fa; 
+          padding: 20px; 
+          border-left: 3px solid #e63946; 
+          margin: 24px 0;
+          border-radius: 6px;
+        }
+        .info-box p { 
+          margin: 8px 0; 
+          font-size: 14px;
+          color: #264653;
+        }
+        .info-box strong { 
+          color: #e63946;
+          font-weight: 600;
+        }
+        .footer { 
+          text-align: center; 
+          padding: 30px; 
+          color: #8b8b8b; 
+          font-size: 14px;
+          background: #f8f9fa;
+          border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+          margin: 4px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">QhatuPE</div>
+          <h1 style="margin: 0; font-size: 28px;">Verifica tu cuenta</h1>
+        </div>
+        <div class="content">
+          <h2>¡Hola ${name}!</h2>
+          <p>Gracias por registrarte en QhatuPE. Para completar tu registro y activar tu cuenta, ingresa el siguiente código de verificación:</p>
+          
+          <div class="code-container">
+            <div class="code">${code}</div>
+            <div class="code-label">Código de verificación</div>
+          </div>
+          
+          <div class="info-box">
+            <p><strong>⏰ Información importante:</strong></p>
+            <p>• Este código es válido por 5 minutos</p>
+            <p>• Si no solicitaste este código, ignora este email</p>
+            <p>• Nunca compartas este código con nadie</p>
+          </div>
+          
+          <p style="color: #8b8b8b; font-size: 14px; margin-top: 24px;">
+            Si no creaste una cuenta en QhatuPE, puedes ignorar este mensaje de forma segura.
+          </p>
         </div>
         <div class="footer">
           <p><strong>QhatuPE</strong></p>

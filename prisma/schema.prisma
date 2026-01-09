@@ -88,9 +88,11 @@ model User {
   plan                Plan      @default(BASIC)
   planExpiresAt       DateTime?
 
-  // Verificación
-  isVerified         Boolean            @default(false)
-  verificationStatus VerificationStatus @default(UNVERIFIED)
+  // Verificación de Email
+  isVerified               Boolean            @default(false)
+  verificationStatus       VerificationStatus @default(UNVERIFIED)
+  verificationCode         String?            // Código de 4 dígitos
+  verificationCodeExpiry   DateTime?          // Expiración del código
 
   // Role
   role Role @default(SELLER)

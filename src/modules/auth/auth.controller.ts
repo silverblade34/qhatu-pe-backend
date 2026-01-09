@@ -5,13 +5,13 @@ import {
   Body,
   Query,
   Param,
-  UseGuards
+  UseGuards,
+  BadRequestException
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterSellerDto } from './dto/register-seller.dto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
-import { QuickRegisterDto } from './dto/quick-register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -71,6 +71,46 @@ export class AuthController {
   @ApiOperation({ summary: 'Cerrar sesión' })
   async logout(@CurrentUser() user: any) {
     return this.authService.logout(user.id);
+  }
+
+  // ============================================
+  // VALIDACIÓN DE EMAIL
+  // ============================================
+  @Public()
+  @Post('verify-email-code')
+  @ApiOperation({ summary: 'Verificar email con código de 4 dígitos' })
+  async verifyEmailWithCode(
+    @Body() body: { userId: string; code: string }
+  ) {
+    return this.authService.verifyEmailWithCode(body.userId, body.code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('resend-verification-code')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reenviar código de verificación' })
+  async resendVerificationCode(@CurrentUser() user: any) {
+    return this.authService.resendVerificationCode(user.id);
+  }
+
+  @Public()
+  @Post('resend-verification-code-public')
+  @ApiOperation({ summary: 'Reenviar código de verificación (público)' })
+  async resendVerificationCodePublic(@Body() body: { email: string }) {
+    const user = await this.authService['prisma'].user.findUnique({
+      where: { email: body.email.toLowerCase() },
+      select: { id: true, isVerified: true },
+    });
+
+    if (!user) {
+      return { message: 'Si el email existe, recibirás un código de verificación' };
+    }
+
+    if (user.isVerified) {
+      throw new BadRequestException('Este email ya está verificado');
+    }
+
+    return this.authService.resendVerificationCode(user.id);
   }
 
   // ============================================
