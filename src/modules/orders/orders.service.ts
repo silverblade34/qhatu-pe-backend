@@ -25,7 +25,8 @@ export class OrdersService {
     const { items, couponCode, customerInfo } = createOrderDto;
 
     // Validar que todos los productos existan y tengan stock
-    const productIds = items.map(item => item.productId);
+    const productIds = [...new Set(items.map(item => item.productId))];
+
     const products = await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
@@ -192,7 +193,7 @@ export class OrdersService {
     const { items, couponCode, customerInfo, paymentMethod } = createOrderDto;
 
     // Validar productos y calcular totales
-    const productIds = items.map(item => item.productId);
+    const productIds = [...new Set(items.map(item => item.productId))];
     const products = await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
@@ -216,7 +217,7 @@ export class OrdersService {
     });
 
     if (products.length !== productIds.length) {
-      throw new BadRequestException('Productos no válidos');
+      throw new BadRequestException('Uno o más productos no están disponibles');
     }
 
     let subtotal = 0;
