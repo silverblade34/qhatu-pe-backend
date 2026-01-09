@@ -12,8 +12,12 @@ export default registerAs('r2', () => ({
       publicUrl: process.env.R2_PUBLIC_URL_AVATARS || 'https://cdn.qhatupe.com',
     },
     products: {
-      name: process.env.R2_BUCKET_PRODUCTS || 'qhatupe-products',
-      publicUrl: process.env.R2_PUBLIC_URL_PRODUCTS || 'https://media.qhatupe.com',
+      name: process.env.R2_BUCKET_MEDIA || 'qhatupe-media',
+      publicUrl: process.env.R2_PUBLIC_URL_MEDIA || 'https://media.qhatupe.com',
+    },
+    banners: {
+      name: process.env.R2_BUCKET_MEDIA || 'qhatupe-media',
+      publicUrl: process.env.R2_PUBLIC_URL_MEDIA || 'https://media.qhatupe.com',
     },
   },
 }));

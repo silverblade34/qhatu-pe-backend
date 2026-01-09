@@ -14,7 +14,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) {}
+  constructor(private readonly uploadService: UploadService) { }
 
   /**
    * Sube imágenes de productos (máximo 5 por request)
@@ -29,12 +29,12 @@ export class UploadController {
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
           'image/jpeg',
-          'image/jpg', 
-          'image/png', 
+          'image/jpg',
+          'image/png',
           'image/webp',
           'image/heic', // iPhone usa HEIC
         ];
-        
+
         if (!allowedMimes.includes(file.mimetype)) {
           return cb(
             new BadRequestException(
@@ -87,7 +87,7 @@ export class UploadController {
           'image/webp',
           'image/heic',
         ];
-        
+
         if (!allowedMimes.includes(file.mimetype)) {
           return cb(
             new BadRequestException(
@@ -113,6 +113,55 @@ export class UploadController {
     return {
       success: true,
       message: 'Avatar actualizado correctamente',
+      url,
+    };
+  }
+
+
+  /**
+ * Sube banner de usuario
+ */
+  @Post('banner')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('banner', {
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+      fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/heic',
+        ];
+
+        if (!allowedMimes.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException(
+              'Solo se permiten imágenes (JPEG, PNG, WebP, HEIC)'
+            ),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadBanner(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No se ha proporcionado ningún archivo');
+    }
+
+    const url = await this.uploadService.uploadBanner(file, user.username);
+
+    return {
+      success: true,
+      message: 'Banner actualizado correctamente',
       url,
     };
   }

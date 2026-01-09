@@ -36,6 +36,10 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
+    console.log("===============================")
+    console.log(JSON.stringify(updateProfileDto, null, 2));
+    console.log("===============================")
+
     return this.profileService.updateProfile(user.id, updateProfileDto);
   }
 

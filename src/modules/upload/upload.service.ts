@@ -10,7 +10,7 @@ import { r2Client } from 'src/config/r2.config';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { SubscriptionPlan } from 'src/common/constants/subscription-plan.constants';
 
-type BucketType = 'avatars' | 'products';
+type DirectoryType = 'avatars' | 'banners' | 'products';
 
 interface OptimizationConfig {
   maxWidth: number;
@@ -25,21 +25,21 @@ export class UploadService {
   constructor(
     private config: ConfigService,
     private subscriptionService: SubscriptionService,
-  ) {}
+  ) { }
 
   /**
    * Sube archivo temporal (expira en 1 hora)
    */
   async uploadFile(
     file: Express.Multer.File,
-    bucketType: BucketType,
+    directory: DirectoryType,
     username: string,
     plan: SubscriptionPlan = 'BASIC',
     isTemporary: boolean = false,
   ): Promise<string> {
     this.validateFile(file);
 
-    const optimizationConfig = this.getOptimizationConfig(plan, bucketType);
+    const optimizationConfig = this.getOptimizationConfig(plan, directory);
     const optimizedBuffer = await this.optimizeImage(
       file.buffer,
       file.mimetype,
@@ -48,13 +48,14 @@ export class UploadService {
 
     // Agregar prefijo "temp/" si es temporal
     const fileName = this.generateFileName(
+      directory,
       file.originalname,
       username,
       optimizationConfig.format,
       isTemporary,
     );
 
-    const bucketConfig = this.config.get(`r2.buckets.${bucketType}`);
+    const bucketConfig = this.config.get(`r2.buckets.${directory}`);
     const bucketName = bucketConfig.name;
     const publicUrl = bucketConfig.publicUrl;
 
@@ -65,7 +66,7 @@ export class UploadService {
       ContentType: `image/${optimizationConfig.format}`,
       ContentDisposition: 'inline',
       // Cache temporal si es temporal, permanente si no
-      CacheControl: isTemporary 
+      CacheControl: isTemporary
         ? 'public, max-age=3600' // 1 hora
         : 'public, max-age=31536000, immutable', // 1 año
       // Agregar expiración si es temporal
@@ -148,7 +149,7 @@ export class UploadService {
 
       } catch (error) {
         console.error(`Error confirmando ${url}:`, error);
-    confirmedUrls.push(url);
+        confirmedUrls.push(url);
       }
     }
 
@@ -160,7 +161,7 @@ export class UploadService {
    */
   async uploadFiles(
     files: Express.Multer.File[],
-    bucketType: BucketType,
+    directory: DirectoryType,
     username: string,
     plan: SubscriptionPlan = 'BASIC',
     isTemporary: boolean = false,
@@ -172,7 +173,7 @@ export class UploadService {
     this.subscriptionService.validateFileUpload(plan, files.length);
 
     const uploadPromises = files.map((file) =>
-      this.uploadFile(file, bucketType, username, plan, isTemporary),
+      this.uploadFile(file, directory, username, plan, isTemporary),
     );
 
     return Promise.all(uploadPromises);
@@ -180,11 +181,11 @@ export class UploadService {
 
   private getOptimizationConfig(
     plan: SubscriptionPlan,
-    bucketType: BucketType,
+    directory: DirectoryType,
   ): OptimizationConfig {
     const features = this.subscriptionService.getPlanFeatures(plan);
 
-    if (bucketType === 'avatars') {
+    if (directory === 'avatars') {
       return {
         maxWidth: 400,
         maxHeight: 400,
@@ -208,7 +209,7 @@ export class UploadService {
     mimetype: string,
     config: OptimizationConfig,
   ): Promise<Buffer> {
-     console.log(JSON.stringify(config, null, 2));
+    console.log(JSON.stringify(config, null, 2));
     try {
       let image = sharp(buffer);
 
@@ -284,6 +285,7 @@ export class UploadService {
   }
 
   private generateFileName(
+    directory: string,
     originalName: string,
     username: string,
     extension: string,
@@ -291,8 +293,8 @@ export class UploadService {
   ): string {
     const baseName = this.normalizeFilename(originalName);
     const uniqueSuffix = this.shortId();
-    const folder = isTemporary ? 'temp' : username; // ✅ Carpeta temp/ o username/
-    return `${folder}/${baseName}-${uniqueSuffix}.${extension}`;
+    const folder = isTemporary ? 'temp' : username; // Carpeta temp/ o username/
+    return `${directory}/${folder}/${baseName}-${uniqueSuffix}.${extension}`;
   }
 
   private normalizeFilename(originalName: string): string {
@@ -323,6 +325,10 @@ export class UploadService {
 
   async uploadAvatar(file: Express.Multer.File, username: string): Promise<string> {
     return this.uploadFile(file, 'avatars', username, 'BASIC', false); // Avatar siempre permanente
+  }
+
+  async uploadBanner(file: Express.Multer.File, username: string): Promise<string> {
+    return this.uploadFile(file, 'banners', username, 'BASIC', false); // Banner siempre permanente
   }
 
   async uploadProductImages(
