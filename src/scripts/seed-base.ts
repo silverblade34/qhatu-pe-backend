@@ -110,7 +110,6 @@ async function main() {
           bio: 'Las mejores prendas al mejor precio 🔥',
           phone: '+51999888777',
           logo: 'https://api.dicebear.com/7.x/initials/svg?seed=JuanPerez',
-          banner: 'https://via.placeholder.com/1200x400',
           isActive: true,
           badges: ['VERIFICADO', 'TOP_SELLER'],
           categoryId: categories[0].id, // Ropa

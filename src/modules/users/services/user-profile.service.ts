@@ -1,15 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { UpdateProfileDto } from '../dto/update-profile.dto';
+import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 @Injectable()
 export class UserProfileService {
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) { }
+  ) {}
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({
@@ -37,12 +38,22 @@ export class UserProfileService {
         storeName: updateProfileDto.storeName,
         bio: updateProfileDto.bio,
         logo: updateProfileDto.logo,
-        banner: updateProfileDto.banner,
-        phone: updateProfileDto.storePhone,
+        phone: updateProfileDto.phone,
+        whatsapp: updateProfileDto.whatsapp,
+        categoryId: updateProfileDto.categoryId,
+        metaTitle: updateProfileDto.metaTitle,
+        metaDescription: updateProfileDto.metaDescription,
+        metaKeywords: updateProfileDto.metaKeywords,
+        allowReviews: updateProfileDto.allowReviews,
+        showStock: updateProfileDto.showStock,
+        showSoldOut: updateProfileDto.showSoldOut,
+        requirePhone: updateProfileDto.requirePhone,
+        requireEmail: updateProfileDto.requireEmail,
+        requireAddress: updateProfileDto.requireAddress,
       },
     });
 
-    // Actualizar redes sociales si se proporcionan
+    // Actualizar redes sociales
     if (updateProfileDto.socialLinks) {
       await this.prisma.socialLink.deleteMany({
         where: { storeProfileId: updatedProfile.id },
@@ -50,13 +61,16 @@ export class UserProfileService {
 
       if (updateProfileDto.socialLinks.length > 0) {
         await this.prisma.socialLink.createMany({
-          data: updateProfileDto.socialLinks.map((link) => ({
+          data: updateProfileDto.socialLinks.map((link, index) => ({
             ...link,
             storeProfileId: updatedProfile.id,
+            order: link.order ?? index,
           })),
         });
       }
     }
+
+    // Invalidar cache
     if (user.role === 'SELLER' && updatedProfile) {
       await this.invalidateStoresCache(
         user.username,
@@ -70,9 +84,6 @@ export class UserProfileService {
     };
   }
 
-  /**
-  * Invalida cache de tiendas
-  */
   private async invalidateStoresCache(username: string, categoryId?: string): Promise<void> {
     try {
       const patterns = [
@@ -90,7 +101,6 @@ export class UserProfileService {
 
       const store = stores[0];
       const client = store.client || store.getClient?.();
-
       if (!client) return;
 
       for (const pattern of patterns) {

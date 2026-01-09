@@ -27,12 +27,12 @@ enum Role {
 }
 
 enum OrderStatus {
-  PENDING // Esperando confirmación
-  CONFIRMED // Confirmado por vendedor
-  PREPARING // Preparando pedido
-  READY // Listo para entrega/envío
-  DELIVERED // Entregado
-  CANCELLED // Cancelado
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -47,11 +47,13 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  REFUNDED
 }
 
 enum DiscountType {
   PERCENTAGE
   FIXED
+  FREE_SHIPPING
 }
 
 enum CouponStatus {
@@ -67,6 +69,42 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum BannerType {
+  PROMOTIONAL // Banner promocional
+  SEASONAL // Campaña temporal (Halloween, Navidad, etc)
+  ANNOUNCEMENT // Anuncio general
+  NEW_COLLECTION // Nueva colección
+  FLASH_SALE // Oferta flash
+}
+
+enum OfferType {
+  WELCOME // Modal de bienvenida
+  EXIT_INTENT // Al intentar salir
+  TIMED // Por tiempo limitado
+  FIRST_PURCHASE // Primera compra
+  SEASONAL // Campaña estacional
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  TRIAL
+  PAYMENT_FAILED
+}
+
+enum CampaignType {
+  HALLOWEEN
+  BLACK_FRIDAY
+  CYBER_MONDAY
+  CHRISTMAS
+  NEW_YEAR
+  VALENTINES
+  MOTHERS_DAY
+  FATHERS_DAY
+  CUSTOM
+}
+
 // ============================================
 // USER & AUTHENTICATION
 // ============================================
@@ -74,7 +112,7 @@ model User {
   id                  String    @id @default(uuid())
   email               String    @unique
   username            String    @unique
-  password            String    // Vacío para usuarios OAuth
+  password            String
   fullName            String
   phone               String
   avatar              String?
@@ -82,17 +120,17 @@ model User {
   resetPasswordExpiry DateTime?
 
   // Google OAuth
-  googleId            String?   @unique // ID único de Google
-  
+  googleId String? @unique
+
   // Plan de suscripción
-  plan                Plan      @default(BASIC)
-  planExpiresAt       DateTime?
+  plan          Plan      @default(BASIC)
+  planExpiresAt DateTime?
 
   // Verificación de Email
-  isVerified               Boolean            @default(false)
-  verificationStatus       VerificationStatus @default(UNVERIFIED)
-  verificationCode         String?            // Código de 4 dígitos
-  verificationCodeExpiry   DateTime?          // Expiración del código
+  isVerified             Boolean            @default(false)
+  verificationStatus     VerificationStatus @default(UNVERIFIED)
+  verificationCode       String?
+  verificationCodeExpiry DateTime?
 
   // Role
   role Role @default(SELLER)
@@ -109,6 +147,10 @@ model User {
   coupons           Coupon[]
   reviews           Review[]          @relation("SellerReviews")
   receivedReviews   Review[]          @relation("CustomerReviews")
+  subscriptions     Subscription[]
+  payments          Payment[]
+  offers            Offer[]
+  campaigns         Campaign[]
 
   @@index([username])
   @@index([email])
@@ -124,19 +166,33 @@ model StoreProfile {
   storeName String
   bio       String? @db.Text
   logo      String?
-  banner    String?
   phone     String?
+  whatsapp  String? // Número de WhatsApp para pedidos
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
   isActive Boolean  @default(true)
-  badges   String[] @default([])
+  badges   String[] @default([]) // Verified, FastShipping, TopRated, etc
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String[] @default([])
+
+  // Configuración de tienda
+  allowReviews   Boolean @default(true)
+  showStock      Boolean @default(true)
+  showSoldOut    Boolean @default(true)
+  requirePhone   Boolean @default(true)
+  requireEmail   Boolean @default(false)
+  requireAddress Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   socialLinks SocialLink[]
+  banners     Banner[]
 
   @@map("store_profiles")
 }
@@ -146,18 +202,173 @@ model SocialLink {
   storeProfileId String
   storeProfile   StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
 
-  platform String // INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP
+  platform String // INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP, YOUTUBE, TELEGRAM
   url      String
+  order    Int    @default(0) // Para ordenar los links
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
+  @@index([storeProfileId])
   @@map("social_links")
+}
+
+// ============================================
+// BANNERS & CAROUSELS
+// ============================================
+
+model Banner {
+  id             String       @id @default(uuid())
+  storeProfileId String
+  storeProfile   StoreProfile @relation(fields: [storeProfileId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+
+  // Imágenes responsive
+  imageDesktop String // Imagen para escritorio (recomendado: 1920x600)
+  imageMobile  String // Imagen para móvil (recomendado: 750x1000)
+
+  // Tipo y categoría
+  type BannerType @default(PROMOTIONAL)
+
+  // Call to Action
+  ctaText String? // Texto del botón (ej: "Ver ofertas", "Comprar ahora")
+  ctaLink String? // URL de redirección
+
+  // Configuración
+  isActive     Boolean @default(true)
+  order        Int     @default(0) // Para ordenar en el carrusel
+  showButton   Boolean @default(false) // Mostrar botón CTA
+  openInNewTab Boolean @default(false)
+
+  // Analytics
+  clicks Int @default(0)
+  views  Int @default(0)
+
+  // Vigencia (opcional)
+  startDate DateTime?
+  endDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeProfileId])
+  @@index([isActive])
+  @@index([order])
+  @@map("banners")
+}
+
+// ============================================
+// OFFERS & PROMOTIONS
+// ============================================
+
+model Offer {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String  @db.Text
+  image       String? // Imagen para el modal/popup
+
+  type OfferType @default(WELCOME)
+
+  // Descuento asociado
+  discountType  DiscountType?
+  discountValue Float? // 20 (%) o 10 (PEN)
+  couponCode    String? // Código que se generará/usará
+
+  // Configuración de display
+  showModal   Boolean  @default(true) // Mostrar como modal
+  modalDelay  Int      @default(2000) // Delay en ms antes de mostrar
+  showOnPages String[] @default(["home", "catalog"]) // Páginas donde mostrar
+
+  // Call to Action
+  ctaText String  @default("Aprovechar oferta")
+  ctaLink String?
+
+  // Restricciones
+  minPurchase Float? // Monto mínimo
+  maxUsage    Int? // Límites de uso
+  usageCount  Int    @default(0)
+
+  // Productos específicos
+  productIds String[] @default([])
+
+  // Vigencia
+  startDate DateTime
+  endDate   DateTime
+
+  // Estado
+  isActive Boolean @default(true)
+
+  // Analytics
+  views       Int @default(0)
+  clicks      Int @default(0)
+  conversions Int @default(0) // Cuántos usaron la oferta
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([type])
+  @@map("offers")
+}
+
+// ============================================
+// SEASONAL CAMPAIGNS
+// ============================================
+
+model Campaign {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?      @db.Text
+  type        CampaignType
+
+  // Diseño visual
+  banner String? // Banner principal
+  colors Json? // { primary: "#ff0000", secondary: "#00ff00" }
+  theme  String? // Halloween, Christmas, etc
+
+  // Productos participantes
+  productIds String[] @default([])
+
+  // Descuentos de campaña
+  globalDiscount    Float? // Descuento general (%)
+  specialCouponCode String? // Cupón especial de la campaña
+
+  // Configuración
+  isActive   Boolean @default(false)
+  isFeatured Boolean @default(false) // Destacar en la tienda
+
+  // Vigencia
+  startDate DateTime
+  endDate   DateTime
+
+  // Analytics
+  totalViews   Int   @default(0)
+  totalOrders  Int   @default(0)
+  totalRevenue Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([isActive])
+  @@map("campaigns")
 }
 
 model Category {
   id          String  @id @default(uuid())
   name        String  @unique
   description String?
+  icon        String? // emoji o url
 
   storeProfiles StoreProfile[]
   createdAt     DateTime       @default(now())
@@ -175,19 +386,18 @@ model ProductCategory {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name        String // "Polos", "Pantalones", "Zapatillas"
+  name        String
   slug        String
   description String?
-  icon        String? // emoji o url de icono
-  order       Int     @default(0) // Para ordenar las categorías
+  icon        String?
+  order       Int     @default(0)
 
-  // Relaciones
   products Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, slug]) // Slug único por vendedor
+  @@unique([userId, slug])
   @@index([userId])
   @@map("product_categories")
 }
@@ -197,43 +407,53 @@ model Product {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Información básica
   name        String
   description String @db.Text
   price       Float
 
-  // Stock
+  // Precio con descuento (para ofertas)
+  salePrice Float?
+
   stock             Int @default(0)
   lowStockThreshold Int @default(5)
 
-  // Categoría del producto (personalizada por vendedor)
   categoryId String?
   category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  // Estado y features especiales
+  // Estados
   isActive     Boolean @default(true)
-  isFlashSale  Boolean @default(false) // Oferta flash
-  isFeatured   Boolean @default(false) // Destacado
-  isComingSoon Boolean @default(false) // Próximamente
+  isFlashSale  Boolean @default(false)
+  isFeatured   Boolean @default(false)
+  isComingSoon Boolean @default(false)
+  isNewArrival Boolean @default(false) // Nuevo ingreso
+
+  // Campaign
+  campaignId String? // ID de campaña asociada (si aplica)
 
   // SEO
-  slug String
+  slug            String
+  metaDescription String?
+  tags            String[] @default([])
 
-  // Timestamps
+  // Analytics
+  views     Int @default(0)
+  favorites Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
   images     ProductImage[]
   variants   ProductVariant[]
   orderItems OrderItem[]
   reviews    Review[]         @relation("ProductReviews")
 
-  @@unique([userId, slug]) // Slug único por vendedor
+  @@unique([userId, slug])
   @@unique([userId, name])
   @@index([userId])
   @@index([categoryId])
   @@index([isActive])
+  @@index([isFlashSale])
+  @@index([isFeatured])
   @@map("products")
 }
 
@@ -242,12 +462,12 @@ model ProductImage {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  url     String
-  altText String?
-  order   Int     @default(0)
+  url       String
+  altText   String?
+  order     Int     @default(0)
+  isPrimary Boolean @default(false)
 
   createdAt DateTime @default(now())
-  isPrimary Boolean  @default(false)
 
   @@index([productId])
   @@map("product_images")
@@ -258,16 +478,12 @@ model ProductVariant {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // Ej: "M - Rojo"
-  name  String
-  sku   String?
-  price Float? // Precio específico (opcional)
-  stock Int     @default(0)
-
-  // Atributos como JSON: { "talla": "M", "color": "Rojo" }
+  name       String
+  sku        String?
+  price      Float?
+  stock      Int     @default(0)
   attributes Json
-
-  isActive Boolean @default(true)
+  isActive   Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -283,43 +499,41 @@ model ProductVariant {
 
 model Order {
   id          String @id @default(uuid())
-  orderNumber String @unique // ORD-20240101-XXXXX
+  orderNumber String @unique
 
-  // Vendedor
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  // Cliente
   customerName  String
   customerPhone String
   customerEmail String?
 
-  // Dirección de entrega
   deliveryAddress String? @db.Text
   deliveryNotes   String? @db.Text
 
-  // Status
   status OrderStatus @default(PENDING)
 
-  // Pago
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(PENDING)
 
-  // Montos
   subtotal Float
   discount Float @default(0)
+  shipping Float @default(0) // Costo de envío
   total    Float
 
-  // Cupón aplicado
   couponId String?
   coupon   Coupon? @relation(fields: [couponId], references: [id])
 
-  // Timestamps
+  // Campaña asociada
+  campaignId String?
+
+  // Tracking
+  trackingNumber String?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deliveredAt DateTime?
 
-  // Relaciones
   items OrderItem[]
 
   @@index([userId])
@@ -337,11 +551,9 @@ model OrderItem {
   productId String
   product   Product @relation(fields: [productId], references: [id])
 
-  // Snapshot de datos (por si el producto se edita después)
   productName  String
   productPrice Float
 
-  // Variante seleccionada
   variantName String?
 
   quantity  Int
@@ -364,44 +576,119 @@ model Coupon {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Código del cupón
   code String
 
-  // Tipo de descuento
   discountType  DiscountType
-  discountValue Float // 20 (%) o 10 (PEN)
+  discountValue Float
 
-  // Restricciones
-  minPurchase Float? // Monto mínimo de compra
-  maxDiscount Float? // Descuento máximo (útil para porcentajes)
-  usageLimit  Int? // Límite de usos
+  minPurchase Float?
+  maxDiscount Float?
+  usageLimit  Int?
   usageCount  Int    @default(0)
 
-  // Productos específicos (opcional)
-  productIds String[] @default([]) // IDs de productos donde aplica
+  productIds String[] @default([])
 
-  // Validez
+  // Categorías aplicables
+  categoryIds String[] @default([])
+
   startDate DateTime
   endDate   DateTime
 
-  // Estado
   status CouponStatus @default(ACTIVE)
 
   isTemporary              Boolean   @default(false)
   temporaryDurationMinutes Int?
-  activatedAt              DateTime? 
+  activatedAt              DateTime?
 
-  // Timestamps
+  // Para campañas
+  campaignId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
   orders Order[]
 
-  @@unique([userId, code]) // Código único por vendedor
+  @@unique([userId, code])
   @@index([userId])
   @@index([status])
   @@map("coupons")
+}
+
+// ============================================
+// SUBSCRIPTIONS & PAYMENTS
+// ============================================
+
+model Subscription {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan   Plan               @default(BASIC)
+  status SubscriptionStatus @default(TRIAL)
+
+  // Fechas
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  trialEndsAt DateTime? // Para período de prueba
+  cancelledAt DateTime?
+
+  // Precios
+  price    Float // Precio mensual
+  currency String @default("PEN")
+
+  // Billing
+  billingCycle String  @default("monthly") // monthly, yearly
+  autoRenew    Boolean @default(true)
+
+  // Método de pago guardado (referencia)
+  paymentMethodId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  // Detalles del pago
+  amount   Float
+  currency String        @default("PEN")
+  status   PaymentStatus @default(PENDING)
+
+  // Método de pago
+  paymentMethod String // YAPE, PLIN, CARD, etc
+
+  // Referencia externa (de pasarela de pago)
+  transactionId String? @unique
+  receiptUrl    String? // URL del comprobante
+
+  // Metadata
+  description String?
+  metadata    Json? // Información adicional
+
+  // Fechas
+  paidAt     DateTime?
+  failedAt   DateTime?
+  refundedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([transactionId])
+  @@map("payments")
 }
 
 // ============================================
@@ -414,19 +701,23 @@ model Review {
   productId String?
   product   Product? @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
 
-  // Vendedor calificado
   sellerId String
   seller   User   @relation("SellerReviews", fields: [sellerId], references: [id], onDelete: Cascade)
 
-  // Cliente que califica
   customerId String
   customer   User   @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
 
-  // Calificación
-  rating  Int // 1-5 estrellas
+  rating  Int
   comment String? @db.Text
 
-  // Timestamps
+  // Respuesta del vendedor
+  sellerResponse String?   @db.Text
+  respondedAt    DateTime?
+
+  // Moderación
+  isApproved Boolean @default(true)
+  isHidden   Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -85,7 +85,7 @@ export class StoresService {
                   name: true,
                 }
               },
-              banner: true,
+              banners: true,
               badges: true,
             },
           },
@@ -121,7 +121,7 @@ export class StoresService {
         storeName: store.storeProfile.storeName,
         bio: store.storeProfile.bio,
         logo: store.storeProfile.logo,
-        banner: store.storeProfile.banner,
+        banners: store.storeProfile.banners,
         category: store.storeProfile.category,
         isVerified: store.isVerified,
         badges: store.storeProfile.badges,
@@ -168,6 +168,7 @@ export class StoresService {
         storeProfile: {
           include: {
             socialLinks: true,
+            banners: true,
           },
         },
         products: {
@@ -229,7 +230,7 @@ export class StoresService {
       storeName: user.storeProfile.storeName,
       bio: user.storeProfile.bio,
       logo: user.storeProfile.logo,
-      banner: user.storeProfile.banner,
+      banners: user.storeProfile.banners,
       phone: user.storeProfile.phone,
       isVerified: user.isVerified,
       badges: user.storeProfile.badges,
