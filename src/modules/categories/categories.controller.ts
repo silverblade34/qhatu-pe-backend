@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query, UseInterceptors } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -7,57 +7,61 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
+import { CacheKey } from 'src/common/decorators/cache-key.decorator';
+import { HttpCacheInterceptor } from 'src/common/interceptors/cache.interceptor';
 
 @ApiTags('Categories')
 @Controller('categories')
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) {}
+  constructor(
+    private readonly categoriesService: CategoriesService,
+    private readonly cacheInvalidation: CacheInvalidationService,
+  ) { }
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Obtener todas las categorías' })
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('categories')
   async getAllCategories() {
     return this.categoriesService.findAll();
   }
 
-  // PÚBLICO - Obtener estadísticas de categoría (cuántas tiendas hay)
   @Public()
   @Get(':id/stats')
-  @ApiOperation({ summary: 'Obtener estadísticas de una categoría' })
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('category_stats')
   async getCategoryStats(@Param('id') id: string) {
     return this.categoriesService.getCategoryStats(id);
   }
 
-  // ADMIN - Crear categoría
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Crear nueva categoría (Solo Admin)' })
   async createCategory(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoriesService.create(createCategoryDto);
+    const result = await this.categoriesService.create(createCategoryDto);
+    await this.cacheInvalidation.invalidateCategories();
+    return result;
   }
 
-  // ADMIN - Actualizar categoría
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Put(':id')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Actualizar categoría (Solo Admin)' })
   async updateCategory(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoriesService.update(id, updateCategoryDto);
+    const result = await this.categoriesService.update(id, updateCategoryDto);
+    await this.cacheInvalidation.invalidateCategories();
+    return result;
   }
 
-  // ADMIN - Eliminar categoría
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete(':id')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Eliminar categoría (Solo Admin)' })
   async deleteCategory(@Param('id') id: string) {
-    return this.categoriesService.delete(id);
+    const result = await this.categoriesService.delete(id);
+    await this.cacheInvalidation.invalidateCategories();
+    return result;
   }
 }

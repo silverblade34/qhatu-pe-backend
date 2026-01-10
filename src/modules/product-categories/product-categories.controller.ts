@@ -7,49 +7,60 @@ import {
   Body,
   Param,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductCategoriesService } from './product-categories.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { CreateProductCategoryDto } from './dto/create-product-category.dto';
 import { UpdateProductCategoryDto } from './dto/update-product-category.dto';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
+import { HttpCacheInterceptor } from 'src/common/interceptors/cache.interceptor';
+import { CacheKey } from 'src/common/decorators/cache-key.decorator';
 
 @ApiTags('Product Categories')
 @Controller('product-categories')
 @ApiBearerAuth()
 export class ProductCategoriesController {
-  constructor(private readonly productCategoriesService: ProductCategoriesService) { }
+  constructor(
+    private readonly productCategoriesService: ProductCategoriesService,
+    private readonly cacheInvalidation: CacheInvalidationService,
+  ) { }
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Obtener categorías de productos del usuario (crea las default si es primera vez)' })
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('product_categories')
   async getMyCategories(@CurrentUser() user: any) {
     return this.productCategoriesService.findAllByUser(user.id);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Crear nueva categoría de producto personalizada' })
   async createCategory(@CurrentUser() user: any, @Body() body: CreateProductCategoryDto) {
-    return this.productCategoriesService.create(user.id, body);
+    const result = await this.productCategoriesService.create(user.id, body);
+    await this.cacheInvalidation.invalidateProductCategories(user.id);
+    return result;
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Actualizar categoría de producto' })
   async updateCategory(
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() body: UpdateProductCategoryDto
   ) {
-    return this.productCategoriesService.update(id, user.id, body);
+    const result = await this.productCategoriesService.update(id, user.id, body);
+    await this.cacheInvalidation.invalidateProductCategories(user.id);
+    return result;
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Eliminar categoría de producto' })
   async deleteCategory(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.productCategoriesService.delete(id, user.id);
+    const result = await this.productCategoriesService.delete(id, user.id);
+    await this.cacheInvalidation.invalidateProductCategories(user.id);
+    return result;
   }
 }

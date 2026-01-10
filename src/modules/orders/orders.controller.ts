@@ -7,6 +7,7 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -14,10 +15,16 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { FilterOrderDto } from './dto/filter-order.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
+import { CacheKey } from 'src/common/decorators/cache-key.decorator';
+import { HttpCacheInterceptor } from 'src/common/interceptors/cache.interceptor';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly cacheInvalidation: CacheInvalidationService,
+  ) { }
 
   /**
    * Genera el mensaje de WhatsApp sin crear la orden
@@ -36,7 +43,12 @@ export class OrdersController {
   async create(
     @Body() createOrderDto: CreateOrderDto,
   ) {
-    return this.ordersService.create(createOrderDto);
+    const result = await this.ordersService.create(createOrderDto);
+
+    const order: any = result;
+    await this.cacheInvalidation.invalidateOrders(order.sellerId);
+
+    return result;
   }
 
   /**
@@ -49,7 +61,9 @@ export class OrdersController {
     @Param('id') orderId: string,
     @Body() updateDto: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(user.id, orderId, updateDto);
+    const result = await this.ordersService.updateStatus(user.id, orderId, updateDto);
+    await this.cacheInvalidation.invalidateOrders(user.id);
+    return result;
   }
 
   /**
@@ -57,6 +71,8 @@ export class OrdersController {
    */
   @Get()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('orders_seller')
   async getSellerOrders(
     @CurrentUser() user: any,
     @Query() filters: FilterOrderDto,
@@ -69,6 +85,8 @@ export class OrdersController {
    */
   @Get('stats')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('orders_stats')
   async getSellerStats(@CurrentUser() user: any) {
     return this.ordersService.getSellerStats(user.id);
   }

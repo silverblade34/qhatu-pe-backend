@@ -12,11 +12,11 @@ import { AvatarService } from '../avatar/avatar.service';
 import { MailModule } from '../mail/mail.module';
 import { PasswordResetService } from './services/password-reset.service';
 import { GoogleAuthService } from './services/google-auth.service';
-import { CacheInvalidationService } from './services/cache-invalidation.service';
 import { EmailVerificationService } from './services/email-verification.service';
 import { TokenService } from './services/token.service';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UsernameValidationService } from './services/username-validation.service';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
 
 @Module({
   imports: [

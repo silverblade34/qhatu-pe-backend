@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CouponsService } from './coupons.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
@@ -16,10 +17,16 @@ import { FilterCouponDto } from './dto/filter-coupon.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
+import { CacheKey } from 'src/common/decorators/cache-key.decorator';
+import { HttpCacheInterceptor } from 'src/common/interceptors/cache.interceptor';
 
 @Controller('coupons')
 export class CouponsController {
-  constructor(private readonly couponsService: CouponsService) { }
+  constructor(
+    private readonly couponsService: CouponsService,
+    private readonly cacheInvalidation: CacheInvalidationService,
+  ) { }
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -27,7 +34,9 @@ export class CouponsController {
     @CurrentUser() user: any,
     @Body() createCouponDto: CreateCouponDto,
   ) {
-    return this.couponsService.create(user.id, createCouponDto);
+    const result = await this.couponsService.create(user.id, createCouponDto);
+    await this.cacheInvalidation.invalidateCoupons(user.id);
+    return result;
   }
 
   @Patch(':id')
@@ -37,25 +46,25 @@ export class CouponsController {
     @Param('id') couponId: string,
     @Body() updateCouponDto: UpdateCouponDto,
   ) {
-    return this.couponsService.update(user.id, couponId, updateCouponDto);
+    const result = await this.couponsService.update(user.id, couponId, updateCouponDto);
+    await this.cacheInvalidation.invalidateCoupons(user.id);
+    return result;
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  async delete(
-    @CurrentUser() user: any,
-    @Param('id') couponId: string,
-  ) {
-    return this.couponsService.delete(user.id, couponId);
+  async delete(@CurrentUser() user: any, @Param('id') couponId: string) {
+    const result = await this.couponsService.delete(user.id, couponId);
+    await this.cacheInvalidation.invalidateCoupons(user.id);
+    return result;
   }
 
   @Patch(':id/toggle')
   @UseGuards(JwtAuthGuard)
-  async toggleStatus(
-    @CurrentUser() user: any,
-    @Param('id') couponId: string,
-  ) {
-    return this.couponsService.toggleStatus(user.id, couponId);
+  async toggleStatus(@CurrentUser() user: any, @Param('id') couponId: string) {
+    const result = await this.couponsService.toggleStatus(user.id, couponId);
+    await this.cacheInvalidation.invalidateCoupons(user.id);
+    return result;
   }
 
   @Get()
@@ -99,6 +108,8 @@ export class CouponsController {
   }
 
   @Get('public/:username')
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('coupons_public')
   async getPublicActiveCoupons(@Param('username') username: string) {
     return this.couponsService.getPublicActiveCoupons(username);
   }

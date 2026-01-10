@@ -244,6 +244,11 @@ export class StoresService {
         totalProducts: user.products.length,
         activeCoupons: user.coupons.length,
       },
+      meta: {
+        title: user.storeProfile.metaTitle,
+        description: user.storeProfile.metaDescription,
+        keywords: user.storeProfile.metaKeywords,
+      },
       products: user.products.map(p => ({
         id: p.id,
         name: p.name,

@@ -8,6 +8,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { BannerService } from './services/banner.service';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
 
 @ApiTags('Users')
 @Controller('users')
@@ -16,6 +17,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly profileService: UserProfileService,
     private readonly bannerService: BannerService,
+    private readonly cacheInvalidation: CacheInvalidationService,
   ) { }
 
   // ENDPOINT PROTEGIDO - Ver mi perfil completo
@@ -36,11 +38,11 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    console.log("===============================")
-    console.log(JSON.stringify(updateProfileDto, null, 2));
-    console.log("===============================")
+    const result = await this.profileService.updateProfile(user.id, updateProfileDto);
 
-    return this.profileService.updateProfile(user.id, updateProfileDto);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+
+    return result;
   }
 
   // ========== BANNERS ==========
@@ -53,7 +55,11 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() createBannerDto: CreateBannerDto,
   ) {
-    return this.bannerService.createBanner(user.id, createBannerDto);
+    const result = await this.bannerService.createBanner(user.id, createBannerDto);
+
+    await this.cacheInvalidation.invalidateStoreProfile(user.username);
+
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -73,7 +79,9 @@ export class UsersController {
     @Param('id') bannerId: string,
     @Body() updateBannerDto: UpdateBannerDto,
   ) {
-    return this.bannerService.updateBanner(user.id, bannerId, updateBannerDto);
+    const result = await this.bannerService.updateBanner(user.id, bannerId, updateBannerDto);
+    await this.cacheInvalidation.invalidateStoreProfile(user.username);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,7 +89,9 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar banner' })
   async deleteBanner(@CurrentUser() user: any, @Param('id') bannerId: string) {
-    return this.bannerService.deleteBanner(user.id, bannerId);
+    const result = await this.bannerService.deleteBanner(user.id, bannerId);
+    await this.cacheInvalidation.invalidateStoreProfile(user.username);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)

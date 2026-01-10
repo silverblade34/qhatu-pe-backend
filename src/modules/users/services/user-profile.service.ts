@@ -10,12 +10,18 @@ export class UserProfileService {
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) { }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { storeProfile: true },
+      include: {
+        storeProfile: {
+          include: {
+            socialLinks: true
+          }
+        }
+      },
     });
 
     if (!user) {
@@ -54,6 +60,7 @@ export class UserProfileService {
     });
 
     // Actualizar redes sociales
+    let socialLinks = user.storeProfile?.socialLinks || [];
     if (updateProfileDto.socialLinks) {
       await this.prisma.socialLink.deleteMany({
         where: { storeProfileId: updatedProfile.id },
@@ -67,81 +74,19 @@ export class UserProfileService {
             order: link.order ?? index,
           })),
         });
-      }
-    }
 
-    // Invalidar cache
-    if (user.role === 'SELLER' && updatedProfile) {
-      await this.invalidateStoresCache(
-        user.username,
-        user.storeProfile?.categoryId
-      );
+        // Obtener los links recién creados
+        socialLinks = await this.prisma.socialLink.findMany({
+          where: { storeProfileId: updatedProfile.id }
+        });
+      } else {
+        socialLinks = [];
+      }
     }
 
     return {
       user: updatedUser,
       storeProfile: updatedProfile,
     };
-  }
-
-  private async invalidateStoresCache(username: string, categoryId?: string): Promise<void> {
-    try {
-      const patterns = [
-        'stores_search:*',
-        'stores_featured:*',
-        `store_profile:${username}:*`,
-      ];
-
-      if (categoryId) {
-        patterns.push(`stores_by_category:${categoryId}:*`);
-      }
-
-      const stores: any = this.cacheManager.stores;
-      if (!stores || stores.length === 0) return;
-
-      const store = stores[0];
-      const client = store.client || store.getClient?.();
-      if (!client) return;
-
-      for (const pattern of patterns) {
-        let cursor = '0';
-        let keysDeleted = 0;
-
-        do {
-          const result = await client.scan(cursor, {
-            MATCH: pattern,
-            COUNT: 100,
-          });
-
-          cursor = result.cursor;
-
-          if (result.keys.length > 0) {
-            await Promise.all(result.keys.map((key: string) => this.cacheManager.del(key)));
-            keysDeleted += result.keys.length;
-          }
-        } while (cursor !== '0');
-
-        if (keysDeleted > 0) {
-          console.log(`Cache invalidado: ${keysDeleted} keys de ${pattern}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error invalidando cache de tiendas:', error);
-    }
-  }
-
-  async initializeProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    return this.prisma.storeProfile.create({
-      data: {
-        userId,
-        storeName: user.fullName,
-        bio: '',
-        isActive: true,
-      },
-    });
   }
 }

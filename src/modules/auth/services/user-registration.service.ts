@@ -4,13 +4,13 @@ import { PrismaService } from '../../../database/prisma.service';
 import { AvatarService } from '../../avatar/avatar.service';
 import { MailService } from '../../mail/mail.service';
 import { TokenService } from './token.service';
-import { CacheInvalidationService } from './cache-invalidation.service';
 import { UsernameValidationService } from './username-validation.service';
 import { GoogleAuthService } from './google-auth.service';
 import { RegisterSellerDto } from '../dto/register-seller.dto';
 import { RegisterCustomerDto } from '../dto/register-customer.dto';
 import { GoogleRegisterDto } from '../dto/google-register.dto';
 import { EmailVerificationService } from './email-verification.service';
+import { CacheInvalidationService } from 'src/modules/redis/cache-invalidation.service';
 
 @Injectable()
 export class UserRegistrationService {
@@ -23,7 +23,7 @@ export class UserRegistrationService {
     private usernameValidationService: UsernameValidationService,
     private googleAuthService: GoogleAuthService,
     private emailVerificationService: EmailVerificationService,
-  ) {}
+  ) { }
 
   // REGISTRO DE VENDEDORES
   async registerSeller(registerDto: RegisterSellerDto) {
@@ -92,22 +92,19 @@ export class UserRegistrationService {
     });
 
     // 7. Invalidar cache
-    await this.cacheInvalidationService.invalidateStoresCache(
-      user.username, 
-      registerDto.categoryId
-    );
+    await this.cacheInvalidationService.invalidateStoreListings();
 
     // 8. Generar tokens
     const tokens = await this.tokenService.generateTokens(
-      user.id, 
-      user.username, 
+      user.id,
+      user.username,
       user.role
     );
 
-    if(!user.isVerified){
+    if (!user.isVerified) {
       await this.emailVerificationService.resendVerificationCode(user.id);
     }
-    
+
     return {
       message: '¡Tienda creada exitosamente! Bienvenido a QhatuPe',
       user: this.sanitizeUser(user),
@@ -172,8 +169,8 @@ export class UserRegistrationService {
 
     // 6. Generar tokens
     const tokens = await this.tokenService.generateTokens(
-      user.id, 
-      user.username, 
+      user.id,
+      user.username,
       user.role
     );
 
@@ -219,8 +216,8 @@ export class UserRegistrationService {
       }
 
       const tokens = await this.tokenService.generateTokens(
-        user.id, 
-        user.username, 
+        user.id,
+        user.username,
         user.role
       );
 
@@ -276,12 +273,12 @@ export class UserRegistrationService {
 
     // Invalidar cache de tiendas si es vendedor
     if (role === 'SELLER') {
-      await this.cacheInvalidationService.invalidateStoresCache(user.username);
+      await this.cacheInvalidationService.invalidateStoreListings();
     }
 
     const tokens = await this.tokenService.generateTokens(
-      user.id, 
-      user.username, 
+      user.id,
+      user.username,
       user.role
     );
 
