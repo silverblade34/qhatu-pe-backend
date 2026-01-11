@@ -2,122 +2,78 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { FilterProductDto, AvailabilityFilter } from './dto/filter-product.dto';
-import slugify from 'slugify';
+import { FilterProductDto } from './dto/filter-product.dto';
 import { ProductVariantsService } from './services/product-variants.service';
-import { SubscriptionService } from '../subscription/subscription.service';
+import { ProductSlugService } from './services/product-slug.service';
+import { ProductSkuService } from './services/product-sku.service';
+import { ProductValidationService } from './services/product-validation.service';
+import { ProductQueryService } from './services/product-query.service';
+import { ProductImageService } from './services/product-image.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private variantsService: ProductVariantsService,
-    private subscriptionService: SubscriptionService,
-  ) { }
+    private slugService: ProductSlugService,
+    private skuService: ProductSkuService,
+    private validationService: ProductValidationService,
+    private queryService: ProductQueryService,
+    private imageService: ProductImageService,
+  ) {}
 
   async create(userId: string, createProductDto: CreateProductDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true },
-    });
+    // Validaciones
+    await this.validationService.validateResourceLimits(userId);
+    await this.validationService.validateUniqueProductName(
+      userId,
+      createProductDto.name,
+    );
 
-    const productCount = await this.prisma.product.count({
-      where: { userId },
-    });
-
-    try {
-      this.subscriptionService.validateResourceLimit(
-        user.plan,
-        'maxProducts',
-        productCount,
-      );
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-
-    // Validar que el nombre del producto sea único para este usuario
-    const existingProduct = await this.prisma.product.findFirst({
-      where: {
-        userId,
-        name: createProductDto.name,
-      },
-    });
-
-    if (existingProduct) {
-      throw new BadRequestException(
-        `Ya tienes un producto con el nombre "${createProductDto.name}". Por favor, usa un nombre diferente.`,
-      );
-    }
-
-    // Validar categoría si se proporciona
     if (createProductDto.categoryId) {
-      const category = await this.prisma.productCategory.findUnique({
-        where: { id: createProductDto.categoryId },
-      });
+      await this.validationService.validateCategory(
+        userId,
+        createProductDto.categoryId,
+      );
+    }
 
-      if (!category || category.userId !== userId) {
-        throw new BadRequestException('Categoría no válida');
-      }
+    if (createProductDto.images && createProductDto.images.length > 0) {
+      await this.validationService.validateImageLimit(
+        userId,
+        createProductDto.images.length,
+      );
     }
 
     // Generar slug único
-    const baseSlug = slugify(createProductDto.name, {
-      lower: true,
-      strict: true,
-    });
-    const slug = await this.generateUniqueSlug(userId, baseSlug);
+    const baseSlug = this.slugService.generateSlugFromName(
+      createProductDto.name,
+    );
+    const slug = await this.slugService.generateUniqueSlug(userId, baseSlug);
 
-    // Procesar variantes: autogenerar SKUs solo si no se proporcionan
-    let processedVariants = createProductDto.variants;
+    // Procesar variantes
+    let processedVariants = this.skuService.processVariants(
+      createProductDto.name,
+      createProductDto.variants,
+    );
+
     if (processedVariants && processedVariants.length > 0) {
-      processedVariants = processedVariants.map((variant) => {
-        // Si no tiene SKU, autogenerar
-        if (!variant.sku) {
-          return {
-            ...variant,
-            sku: this.generateVariantSKU(
-              createProductDto.name,
-              variant.attributes,
-            ),
-          };
-        }
-        // Si tiene SKU, usarlo tal cual
-        return variant;
-      });
-
-      // Validar que no haya SKUs duplicados en el payload
-      const skus = processedVariants.map((v) => v.sku).filter(Boolean);
-      const duplicates = skus.filter((sku, idx) => skus.indexOf(sku) !== idx);
-      if (duplicates.length > 0) {
-        throw new BadRequestException(
-          `SKUs duplicados en las variantes: ${duplicates.join(', ')}`,
-        );
-      }
+      this.skuService.validateUniqueSKUs(processedVariants);
     }
 
-    // Validar límite de imágenes según plan
-    if (createProductDto.images && createProductDto.images.length > 0) {
-      try {
-        this.subscriptionService.validateFileUpload(
-          user.plan,
-          createProductDto.images.length,
-        );
-      } catch (error) {
-        throw new BadRequestException(error.message);
-      }
-    }
-
+    // Calcular stock inicial
     let initialStock = createProductDto.stock;
     if (processedVariants && processedVariants.length > 0) {
-      initialStock = processedVariants.reduce((sum, variant) => sum + variant.stock, 0);
+      initialStock = processedVariants.reduce(
+        (sum, variant) => sum + variant.stock,
+        0,
+      );
     }
 
-    // Crear producto con imágenes y stock calculado
+    // Crear producto
     const product = await this.prisma.product.create({
       data: {
         userId,
@@ -129,11 +85,9 @@ export class ProductsService {
         stock: initialStock,
         isActive: true,
         images: {
-          create: createProductDto.images.map((url, index) => ({
-            url,
-            order: index,
-            isPrimary: index === 0,
-          })),
+          create: this.imageService.formatImagesForCreate(
+            createProductDto.images,
+          ),
         },
       },
       include: {
@@ -141,8 +95,8 @@ export class ProductsService {
       },
     });
 
+    // Crear variantes si existen
     if (processedVariants && processedVariants.length > 0) {
-      // Usar el método sin actualizar stock nuevamente
       const variantsData = processedVariants.map((variant) => ({
         productId: product.id,
         name: variant.name,
@@ -158,62 +112,7 @@ export class ProductsService {
       });
     }
 
-    return this.getProductById(userId, product.id);
-  }
-
-  private generateVariantSKU(
-    productName: string,
-    attributes: Record<string, any>
-  ): string {
-    // Limpiar y acortar el nombre del producto (máximo 10 caracteres)
-    const productPrefix = productName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s]/g, '') // Solo letras, números y espacios
-      .replace(/\s+/g, '-') // Espacios a guiones
-      .substring(0, 10);
-
-    // Extraer valores de los atributos (talla, color, tamaño, etc.)
-    const attrParts: string[] = [];
-
-    // Orden de prioridad común: talla, color, tamaño, etc.
-    const priorityKeys = ['talla', 'size', 'color', 'tamaño', 'material'];
-
-    // Agregar atributos prioritarios primero
-    priorityKeys.forEach(key => {
-      const value = attributes[key] || attributes[key.toUpperCase()] || attributes[key.toLowerCase()];
-      if (value) {
-        attrParts.push(
-          String(value)
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '')
-            .substring(0, 5)
-        );
-      }
-    });
-
-    // Agregar otros atributos no prioritarios
-    Object.entries(attributes).forEach(([key, value]) => {
-      if (!priorityKeys.includes(key.toLowerCase()) && value) {
-        attrParts.push(
-          String(value)
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '')
-            .substring(0, 5)
-        );
-      }
-    });
-
-    // Formato: PRODUCTO-ATTR1-ATTR2-...
-    const sku = [productPrefix, ...attrParts].join('-');
-
-    // Limitar longitud total del SKU
-    return sku.substring(0, 50);
+    return this.queryService.getProductById(userId, product.id);
   }
 
   async update(
@@ -230,73 +129,50 @@ export class ProductsService {
     }
 
     if (product.userId !== userId) {
-      throw new ForbiddenException('No tienes permiso para editar este producto');
+      throw new ForbiddenException(
+        'No tienes permiso para editar este producto',
+      );
     }
 
-    // Si se está cambiando el nombre, validar que sea único
+    // Validar nombre único si cambió
     if (updateProductDto.name && updateProductDto.name !== product.name) {
-      const existingProduct = await this.prisma.product.findFirst({
-        where: {
-          userId,
-          name: updateProductDto.name,
-          id: { not: productId }, // Excluir el producto actual
-        },
-      });
-
-      if (existingProduct) {
-        throw new BadRequestException(
-          `Ya tienes un producto con el nombre "${updateProductDto.name}". Por favor, usa un nombre diferente.`
-        );
-      }
+      await this.validationService.validateUniqueProductName(
+        userId,
+        updateProductDto.name,
+        productId,
+      );
     }
 
     // Validar categoría si se proporciona
     if (updateProductDto.categoryId) {
-      const category = await this.prisma.productCategory.findUnique({
-        where: { id: updateProductDto.categoryId },
-      });
-
-      if (!category || category.userId !== userId) {
-        throw new BadRequestException('Categoría no válida');
-      }
+      await this.validationService.validateCategory(
+        userId,
+        updateProductDto.categoryId,
+      );
     }
 
     // Actualizar slug si cambió el nombre
     let slug = product.slug;
     if (updateProductDto.name && updateProductDto.name !== product.name) {
-      const baseSlug = slugify(updateProductDto.name, {
-        lower: true,
-        strict: true,
-      });
-      slug = await this.generateUniqueSlug(userId, baseSlug, productId);
+      const baseSlug = this.slugService.generateSlugFromName(
+        updateProductDto.name,
+      );
+      slug = await this.slugService.generateUniqueSlug(
+        userId,
+        baseSlug,
+        productId,
+      );
     }
 
-    // Procesar variantes: autogenerar SKUs solo si no se proporcionan
-    let processedVariants = updateProductDto.variants;
+    // Procesar variantes
+    const productName = updateProductDto.name || product.name;
+    let processedVariants = this.skuService.processVariants(
+      productName,
+      updateProductDto.variants,
+    );
+
     if (processedVariants && processedVariants.length > 0) {
-      const productName = updateProductDto.name || product.name;
-
-      processedVariants = processedVariants.map((variant) => {
-        // Si no tiene SKU, autogenerar
-        if (!variant.sku) {
-          return {
-            ...variant,
-            sku: this.generateVariantSKU(productName, variant.attributes)
-          };
-        }
-        // Si tiene SKU, usarlo tal cual
-        return variant;
-      });
-
-      // Validar que no haya SKUs duplicados en el payload
-      const skus = processedVariants.map(v => v.sku).filter(Boolean);
-      const duplicates = skus.filter((sku, idx) => skus.indexOf(sku) !== idx);
-
-      if (duplicates.length > 0) {
-        throw new BadRequestException(
-          `SKUs duplicados en las variantes: ${duplicates.join(', ')}`
-        );
-      }
+      this.skuService.validateUniqueSKUs(processedVariants);
     }
 
     // Actualizar producto
@@ -321,18 +197,10 @@ export class ProductsService {
 
     // Actualizar imágenes si se proporcionan
     if (updateProductDto.images) {
-      await this.prisma.productImage.deleteMany({
-        where: { productId },
-      });
-
-      await this.prisma.productImage.createMany({
-        data: updateProductDto.images.map((url, index) => ({
-          productId,
-          url,
-          order: index,
-          isPrimary: index === 0,
-        })),
-      });
+      await this.imageService.updateProductImages(
+        productId,
+        updateProductDto.images,
+      );
     }
 
     // Actualizar variantes si se proporcionan
@@ -342,14 +210,11 @@ export class ProductsService {
       });
 
       if (processedVariants.length > 0) {
-        await this.variantsService.createVariants(
-          productId,
-          processedVariants,
-        );
+        await this.variantsService.createVariants(productId, processedVariants);
       }
     }
 
-    return this.getProductById(userId, product.id);
+    return this.queryService.getProductById(userId, product.id);
   }
 
   async delete(userId: string, productId: string) {
@@ -395,11 +260,9 @@ export class ProductsService {
 
     // Generar nuevo slug
     const baseSlug = `${product.slug}-copia`;
-    const newSlug = await this.generateUniqueSlug(userId, baseSlug);
+    const newSlug = await this.slugService.generateUniqueSlug(userId, baseSlug);
 
     // Duplicar producto
-    // NOTA: Al duplicar, los SKUs se pueden mantener porque son únicos por producto
-    // y este es un producto nuevo. Si prefieres generar nuevos SKUs, cambia a undefined.
     const duplicated = await this.prisma.product.create({
       data: {
         userId,
@@ -423,7 +286,7 @@ export class ProductsService {
         variants: {
           create: product.variants.map((variant) => ({
             name: variant.name,
-            sku: variant.sku, // Ahora SÍ se pueden mantener porque es un producto diferente
+            sku: variant.sku,
             price: variant.price,
             stock: variant.stock,
             attributes: variant.attributes,
@@ -441,256 +304,24 @@ export class ProductsService {
     return duplicated;
   }
 
+  // Delegar métodos de consulta
   async getProductById(userId: string, productId: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-      include: {
-        images: { orderBy: { order: 'asc' } },
-        variants: true,
-        category: true,
-      },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Producto no encontrado');
-    }
-
-    if (product.userId !== userId) {
-      throw new ForbiddenException('No tienes permiso para ver este producto');
-    }
-
-    return product;
+    return this.queryService.getProductById(userId, productId);
   }
 
   async getProductBySlug(username: string, slug: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { username: username.toLowerCase() },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Tienda no encontrada');
-    }
-
-    const product = await this.prisma.product.findFirst({
-      where: {
-        userId: user.id,
-        slug,
-        isActive: true,
-      },
-      include: {
-        images: { orderBy: { order: 'asc' } },
-        variants: true,
-        category: true,
-        reviews: {
-          include: {
-            customer: {
-              select: {
-                fullName: true,
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Producto no encontrado');
-    }
-
-    // Calcular rating promedio
-    const avgRating =
-      product.reviews.length > 0
-        ? product.reviews.reduce((acc, r) => acc + r.rating, 0) /
-        product.reviews.length
-        : 0;
-
-    return {
-      ...product,
-      rating: {
-        average: Math.round(avgRating * 10) / 10,
-        count: product.reviews.length,
-      },
-    };
+    return this.queryService.getProductBySlug(username, slug);
   }
 
   async getPublicProducts(username: string, filters: FilterProductDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { username: username.toLowerCase() },
-      select: { id: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Tienda no encontrada');
-    }
-
-    const where: any = {
-      userId: user.id,
-      isActive: true,
-    };
-
-    // Filtros
-    if (filters.category && filters.category !== 'ALL') {
-      where.categoryId = filters.category;
-    }
-
-    if (filters.search) {
-      where.name = {
-        contains: filters.search,
-        mode: 'insensitive',
-      };
-    }
-
-    if (filters.availability === AvailabilityFilter.AVAILABLE) {
-      where.stock = { gt: 0 };
-    } else if (filters.availability === AvailabilityFilter.OUT_OF_STOCK) {
-      where.stock = 0;
-    } else if (filters.availability === AvailabilityFilter.FLASH_SALE) {
-      where.isFlashSale = true;
-    }
-
-    if (filters.minPrice || filters.maxPrice) {
-      where.price = {
-        ...(filters.minPrice && { gte: filters.minPrice }),
-        ...(filters.maxPrice && { lte: filters.maxPrice }),
-      };
-    }
-
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          slug: true,
-          price: true,
-          stock: true,
-          salePrice: true,
-          isFlashSale: true,
-          isFeatured: true,
-          isComingSoon: true,
-          isNewArrival: true,
-          lowStockThreshold: true,
-          images: {
-            select: { url: true },
-            orderBy: { order: 'asc' },
-            take: 1,
-          },
-          category: {
-            select: { name: true, slug: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: filters.limit || 20,
-        skip: filters.offset || 0,
-      }),
-      this.prisma.product.count({ where }),
-    ]);
-
-    return {
-      data: products,
-      total,
-      limit: filters.limit || 20,
-      offset: filters.offset || 0,
-    };
+    return this.queryService.getPublicProducts(username, filters);
   }
 
   async getSellerProducts(userId: string, filters: FilterProductDto) {
-    const where: any = { userId };
-
-    // Filtros
-    if (filters.category && filters.category !== 'ALL') {
-      where.categoryId = filters.category;
-    }
-
-    if (filters.search) {
-      where.name = {
-        contains: filters.search,
-        mode: 'insensitive',
-      };
-    }
-
-    if (filters.availability === AvailabilityFilter.AVAILABLE) {
-      where.stock = { gt: 0 };
-    } else if (filters.availability === AvailabilityFilter.OUT_OF_STOCK) {
-      where.stock = 0;
-    } else if (filters.availability === AvailabilityFilter.FLASH_SALE) {
-      where.isFlashSale = true;
-    }
-
-    const products = await this.prisma.product.findMany({
-      where,
-      include: {
-        images: { orderBy: { order: 'asc' }, take: 1 },
-        category: true,
-        _count: {
-          select: { orderItems: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: filters.limit || 20,
-      skip: filters.offset || 0,
-    });
-
-    const total = await this.prisma.product.count({ where });
-
-    return {
-      data: products,
-      total,
-      limit: filters.limit || 20,
-      offset: filters.offset || 0,
-    };
+    return this.queryService.getSellerProducts(userId, filters);
   }
 
   async getLowStockProducts(userId: string) {
-    return this.prisma.product.findMany({
-      where: {
-        userId,
-        isActive: true,
-        OR: [
-          { stock: { lte: this.prisma.product.fields.lowStockThreshold } },
-          {
-            variants: {
-              some: {
-                stock: { lte: 5 }
-              }
-            }
-          }
-        ]
-      },
-      include: {
-        images: { take: 1 },
-        variants: {
-          where: { stock: { lte: 5 } }
-        }
-      }
-    });
-  }
-
-  private async generateUniqueSlug(
-    userId: string,
-    baseSlug: string,
-    excludeId?: string,
-  ): Promise<string> {
-    let slug = baseSlug;
-    let counter = 1;
-
-    while (true) {
-      const existing = await this.prisma.product.findFirst({
-        where: {
-          userId,
-          slug,
-          ...(excludeId && { id: { not: excludeId } }),
-        },
-      });
-
-      if (!existing) break;
-
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
-
-    return slug;
+    return this.queryService.getLowStockProducts(userId);
   }
 }

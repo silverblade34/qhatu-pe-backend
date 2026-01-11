@@ -124,7 +124,19 @@ model User {
 
   // Plan de suscripción
   plan          Plan      @default(BASIC)
-  planExpiresAt DateTime?
+  planStartDate DateTime? // Fecha en que inició el plan actual
+  planExpiresAt DateTime? // Fecha de vencimiento del plan actual
+
+  // Ciclo de facturación (para planes PRO/PREMIUM)
+  billingCycle      String? @default("monthly") // monthly, yearly
+  billingDayOfMonth Int?    @default(1) // Día del mes en que debe pagar (1-28)
+
+  // Configuración de pagos
+  autoRenew        Boolean @default(false) // Si renueva automáticamente o no
+  paymentReminders Boolean @default(true) // Enviar recordatorios de pago
+
+  // Estado de pago actual
+  hasUnpaidBilling Boolean @default(false) // Tiene facturas pendientes
 
   // Verificación de Email
   isVerified             Boolean            @default(false)
@@ -147,8 +159,7 @@ model User {
   coupons           Coupon[]
   reviews           Review[]          @relation("SellerReviews")
   receivedReviews   Review[]          @relation("CustomerReviews")
-  subscriptions     Subscription[]
-  payments          Payment[]
+  billingRecords    BillingRecord[]
   offers            Offer[]
   campaigns         Campaign[]
 
@@ -156,6 +167,87 @@ model User {
   @@index([email])
   @@index([googleId])
   @@map("users")
+}
+
+model BillingRecord {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Detalles del periodo de facturación
+  plan          Plan // PRO, PREMIUM
+  billingPeriod String // "2025-02" (año-mes)
+  dueDate       DateTime // Fecha límite de pago
+
+  // Montos
+  amount   Float // Monto a pagar
+  currency String @default("PEN")
+
+  // Estado del pago
+  status BillingStatus @default(PENDING)
+
+  // Método de pago usado
+  paymentMethod String? // YAPE, PLIN, BANK_TRANSFER, etc
+
+  // Comprobante
+  receiptUrl    String? // URL del comprobante subido
+  transactionId String? // Referencia del pago
+
+  // Fechas importantes
+  paidAt    DateTime? // Fecha en que se pagó
+  expiredAt DateTime? // Fecha en que expiró (si no se pagó)
+
+  // Notas del administrador
+  adminNotes String? @db.Text
+
+  // Metadata
+  isPromotion Boolean @default(false) // Si es un mes gratis
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, billingPeriod]) // Un registro por usuario por mes
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("billing_records")
+}
+
+// Nuevo enum para estados de facturación
+enum BillingStatus {
+  PENDING // Pendiente de pago
+  PAID // Pagado
+  OVERDUE // Vencido (pasó la fecha límite)
+  WAIVED // Eximido (mes gratis)
+  CANCELLED // Cancelado
+}
+
+model PlanConfig {
+  id   String @id @default(uuid())
+  plan Plan   @unique
+  
+  // Precios
+  monthlyPrice Float
+  yearlyPrice  Float
+  
+  // Límites del plan
+  maxProducts        Int
+  maxImages          Int
+  maxCategories      Int
+  allowCustomDomain  Boolean @default(false)
+  allowAnalytics     Boolean @default(false)
+  allowCoupons       Boolean @default(false)
+  
+  // Días de gracia después del vencimiento
+  gracePeriodDays Int @default(2)
+  
+  // Configuración
+  isActive Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("plan_configs")
 }
 
 model StoreProfile {
@@ -612,83 +704,6 @@ model Coupon {
   @@index([userId])
   @@index([status])
   @@map("coupons")
-}
-
-// ============================================
-// SUBSCRIPTIONS & PAYMENTS
-// ============================================
-
-model Subscription {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  plan   Plan               @default(BASIC)
-  status SubscriptionStatus @default(TRIAL)
-
-  // Fechas
-  startDate   DateTime  @default(now())
-  endDate     DateTime?
-  trialEndsAt DateTime? // Para período de prueba
-  cancelledAt DateTime?
-
-  // Precios
-  price    Float // Precio mensual
-  currency String @default("PEN")
-
-  // Billing
-  billingCycle String  @default("monthly") // monthly, yearly
-  autoRenew    Boolean @default(true)
-
-  // Método de pago guardado (referencia)
-  paymentMethodId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  payments Payment[]
-
-  @@index([userId])
-  @@index([status])
-  @@map("subscriptions")
-}
-
-model Payment {
-  id             String        @id @default(uuid())
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-
-  // Detalles del pago
-  amount   Float
-  currency String        @default("PEN")
-  status   PaymentStatus @default(PENDING)
-
-  // Método de pago
-  paymentMethod String // YAPE, PLIN, CARD, etc
-
-  // Referencia externa (de pasarela de pago)
-  transactionId String? @unique
-  receiptUrl    String? // URL del comprobante
-
-  // Metadata
-  description String?
-  metadata    Json? // Información adicional
-
-  // Fechas
-  paidAt     DateTime?
-  failedAt   DateTime?
-  refundedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([subscriptionId])
-  @@index([status])
-  @@index([transactionId])
-  @@map("payments")
 }
 
 // ============================================
