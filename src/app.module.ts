@@ -57,7 +57,6 @@ import googleAuthConfig from './config/google-auth.config';
     ReviewsModule,
     SubscriptionModule,
     PaymentModule,
-    CacheModule,
     RedisModule,
   ],
 })

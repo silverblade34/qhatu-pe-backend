@@ -17,6 +17,7 @@ import { TokenService } from './services/token.service';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UsernameValidationService } from './services/username-validation.service';
 import { CacheInvalidationService } from '../redis/cache-invalidation.service';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CacheInvalidationService } from '../redis/cache-invalidation.service';
     UsersModule,
     ConfigModule,
     MailModule,
+    RedisModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -40,7 +42,8 @@ import { CacheInvalidationService } from '../redis/cache-invalidation.service';
   providers: [AuthService, JwtStrategy,
     LocalStrategy, AvatarService, PasswordResetService,
     GoogleAuthService, CacheInvalidationService, EmailVerificationService,
-    TokenService, UserRegistrationService, UsernameValidationService],
+    TokenService, UserRegistrationService, UsernameValidationService,
+    CacheInvalidationService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule { }

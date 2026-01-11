@@ -1,15 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { Inject } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 @Injectable()
 export class UserProfileService {
   constructor(
     private prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {

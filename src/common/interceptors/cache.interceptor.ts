@@ -3,19 +3,17 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Inject,
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { Reflector } from '@nestjs/core';
 import { CACHE_KEY_METADATA } from '../decorators/cache-key.decorator';
+import { RedisService } from 'src/modules/redis/redis.service';
 
 @Injectable()
 export class HttpCacheInterceptor implements NestInterceptor {
   constructor(
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly redisService: RedisService,
     private reflector: Reflector,
   ) {}
 
@@ -38,22 +36,49 @@ export class HttpCacheInterceptor implements NestInterceptor {
     const cacheKey = this.generateCacheKey(cacheKeyMetadata, request);
 
     // Intenta obtener del cache
-    const cachedResponse = await this.cacheManager.get(cacheKey);
+    const cachedResponse = await this.redisService.get(cacheKey);
     if (cachedResponse) {
-      return of(cachedResponse);
+      return of(JSON.parse(cachedResponse));
     }
 
     // Si no está en cache, ejecuta y guarda
     return next.handle().pipe(
       tap(async (response) => {
-        await this.cacheManager.set(cacheKey, response, 3600000); // 1 hora
+        // Guarda en Redis con TTL de 1 hora (3600 segundos)
+        await this.redisService.set(cacheKey, JSON.stringify(response), 3600);
       }),
     );
   }
 
   private generateCacheKey(baseKey: string, request: any): string {
-    const { username, slug } = request.params;
-    const queryString = JSON.stringify(request.query);
-    return `${baseKey}:${username || 'all'}:${slug || 'list'}:${queryString}`;
+    const { username, slug, id } = request.params;
+    const queryParams = { ...request.query };
+
+    // Ordenar query params para consistencia
+    const sortedQuery = Object.keys(queryParams)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = queryParams[key];
+        return acc;
+      }, {});
+
+    const queryString = new URLSearchParams(sortedQuery).toString();
+
+    // Para endpoints con username y slug
+    if (username && slug) {
+      return `${baseKey}:${username}:${slug}${queryString ? ':' + queryString : ''}`;
+    }
+
+    // Para endpoints con solo username o id
+    if (username) {
+      return `${baseKey}:${username}${queryString ? ':' + queryString : ''}`;
+    }
+
+    if (id) {
+      return `${baseKey}:${id}${queryString ? ':' + queryString : ''}`;
+    }
+
+    // Para listados generales
+    return `${baseKey}${queryString ? ':' + queryString : ''}`;
   }
 }

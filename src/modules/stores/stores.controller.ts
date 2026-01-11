@@ -4,11 +4,8 @@ import {
   Query,
   Param,
   UseInterceptors,
-  Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { Public } from '../../common/decorators/public.decorator';
 import { StoresService } from './stores.service';
 import { HttpCacheInterceptor } from '../../common/interceptors/cache.interceptor';
@@ -19,7 +16,6 @@ import { CacheKey } from '../../common/decorators/cache-key.decorator';
 export class StoresController {
   constructor(
     private readonly storesService: StoresService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   // BÚSQUEDA DE TIENDAS (CON CACHE)
