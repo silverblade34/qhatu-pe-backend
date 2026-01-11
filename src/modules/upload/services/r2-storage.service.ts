@@ -142,9 +142,9 @@ export class R2StorageService {
     isTemporary: boolean = false,
   ): string {
     const baseName = this.normalizeFilename(originalName);
-    const uniqueSuffix = this.shortId();
+    //const uniqueSuffix = this.shortId();
     const folder = isTemporary ? 'temp' : username;
-    return `${directory}/${folder}/${baseName}-${uniqueSuffix}.${extension}`;
+    return `${directory}/${folder}/${baseName}.${extension}`;
   }
 
   private normalizeFilename(originalName: string): string {
@@ -155,9 +155,5 @@ export class R2StorageService {
       trim: true,
       locale: 'es',
     });
-  }
-
-  private shortId(length = 8): string {
-    return Math.random().toString(36).substring(2, 2 + length);
   }
 }

@@ -171,22 +171,6 @@ export class StoresService {
             banners: true,
           },
         },
-        products: {
-          where: { isActive: true },
-          include: {
-            images: {
-              orderBy: { order: 'asc' },
-              take: 1,
-            },
-            category: {
-              select: {
-                name: true,
-                slug: true,
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
         reviews: {
           include: {
             customer: {
@@ -235,13 +219,18 @@ export class StoresService {
       isVerified: user.isVerified,
       badges: user.storeProfile.badges,
       socialLinks: user.storeProfile.socialLinks,
+      allowReviews: user.storeProfile.allowReviews,
+      showStock: user.storeProfile.showStock,
+      showSoldOut: user.storeProfile.showSoldOut,
+      requirePhone: user.storeProfile.requirePhone,
+      requireEmail: user.storeProfile.requireEmail,
+      requireAddress: user.storeProfile.requireAddress,
       memberSince: user.createdAt,
       rating: {
         average: Math.round(avgRating * 10) / 10,
         count: user.reviews.length,
       },
       stats: {
-        totalProducts: user.products.length,
         activeCoupons: user.coupons.length,
       },
       meta: {
@@ -249,14 +238,6 @@ export class StoresService {
         description: user.storeProfile.metaDescription,
         keywords: user.storeProfile.metaKeywords,
       },
-      products: user.products.map(p => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        slug: p.slug,
-        image: p.images[0]?.url,
-        category: p.category,
-      })),
       recentReviews: user.reviews,
       activeCoupons: user.coupons,
     };

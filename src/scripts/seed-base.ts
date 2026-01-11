@@ -57,35 +57,74 @@ async function main() {
 
   // 2. Crear categorías principales
   const categories = await Promise.all([
+    // Moda y uso personal
     prisma.category.create({
-      data: {
-        name: 'Ropa',
-        description: 'Prendas de vestir',
-      },
+      data: { name: 'Moda y Accesorios', description: 'Ropa, calzado, accesorios y joyería' },
     }),
+
+    // Tecnología y electrónica
     prisma.category.create({
-      data: {
-        name: 'Tecnología',
-        description: 'Dispositivos electrónicos',
-      },
+      data: { name: 'Tecnología y Electrónica', description: 'Celulares, gadgets, computación y accesorios' },
     }),
+
+    // Hogar y decoración
     prisma.category.create({
-      data: {
-        name: 'Hogar',
-        description: 'Artículos para el hogar',
-      },
+      data: { name: 'Hogar y Decoración', description: 'Muebles, decoración, iluminación y menaje' },
     }),
+
+    // Construcción y ferretería
     prisma.category.create({
-      data: {
-        name: 'Alimentos',
-        description: 'Comida y bebidas',
-      },
+      data: { name: 'Construcción y Ferretería', description: 'Mayólicas, herramientas, acabados y materiales' },
     }),
+
+    // Alimentos y bebidas
     prisma.category.create({
-      data: {
-        name: 'Accesorios',
-        description: 'Complementos y accesorios',
-      },
+      data: { name: 'Alimentos y Bebidas', description: 'Comida, bebidas, snacks y productos artesanales' },
+    }),
+
+    // Belleza y cuidado personal
+    prisma.category.create({
+      data: { name: 'Belleza y Cuidado Personal', description: 'Maquillaje, skincare, barbería y estética' },
+    }),
+
+    // Salud y bienestar
+    prisma.category.create({
+      data: { name: 'Salud y Bienestar', description: 'Suplementos, fitness, productos naturales' },
+    }),
+
+    // Bebés y niños
+    prisma.category.create({
+      data: { name: 'Bebés y Niños', description: 'Ropa, juguetes, artículos infantiles' },
+    }),
+
+    // Mascotas
+    prisma.category.create({
+      data: { name: 'Mascotas', description: 'Alimentos, accesorios y cuidado para mascotas' },
+    }),
+
+    // Vehículos y accesorios
+    prisma.category.create({
+      data: { name: 'Vehículos y Accesorios', description: 'Repuestos, accesorios y productos automotrices' },
+    }),
+
+    // Papelería y oficina
+    prisma.category.create({
+      data: { name: 'Papelería y Oficina', description: 'Útiles, impresiones y artículos de oficina' },
+    }),
+
+    // Artesanías y productos hechos a mano
+    prisma.category.create({
+      data: { name: 'Artesanías y Hecho a Mano', description: 'Productos artesanales y personalizados' },
+    }),
+
+    // Servicios
+    prisma.category.create({
+      data: { name: 'Servicios', description: 'Servicios profesionales, técnicos o digitales' },
+    }),
+
+    // Otros
+    prisma.category.create({
+      data: { name: 'Otros', description: 'Productos no clasificados en otras categorías' },
     }),
   ]);
 

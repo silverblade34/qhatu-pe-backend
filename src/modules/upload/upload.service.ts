@@ -48,18 +48,6 @@ export class UploadService {
       isTemporary,
     );
 
-    // Log de compresión
-    const compressionRatio = this.imageOptimization.getCompressionRatio(
-      file.size,
-      optimizedBuffer.length,
-    );
-    console.log(
-      `[${plan}] [${directory.toUpperCase()}] ${isTemporary ? 'TEMP' : 'PERM'} | ` +
-        `${this.imageOptimization.formatBytes(file.size)} → ` +
-        `${this.imageOptimization.formatBytes(optimizedBuffer.length)} ` +
-        `(${compressionRatio}% reducción)`,
-    );
-
     return url;
   }
 

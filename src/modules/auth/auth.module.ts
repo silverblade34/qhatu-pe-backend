@@ -16,7 +16,6 @@ import { EmailVerificationService } from './services/email-verification.service'
 import { TokenService } from './services/token.service';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UsernameValidationService } from './services/username-validation.service';
-import { CacheInvalidationService } from '../redis/cache-invalidation.service';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
@@ -41,9 +40,8 @@ import { RedisModule } from '../redis/redis.module';
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy,
     LocalStrategy, AvatarService, PasswordResetService,
-    GoogleAuthService, CacheInvalidationService, EmailVerificationService,
-    TokenService, UserRegistrationService, UsernameValidationService,
-    CacheInvalidationService],
+    GoogleAuthService, EmailVerificationService,
+    TokenService, UserRegistrationService, UsernameValidationService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule { }

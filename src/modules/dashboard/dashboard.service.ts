@@ -49,7 +49,7 @@ interface TopProduct {
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   /**
    * Obtiene todas las estadísticas del dashboard con queries optimizadas
@@ -222,7 +222,7 @@ export class DashboardService {
       totalProducts,
       pendingOrders,
       activeCoupons,
-      averageRating: ratings._avg.rating || 0,
+      averageRating: Math.ceil(ratings._avg.rating ?? 0),
       recentOrders: formattedRecentOrders,
       last7DaysOrders: last7DaysData,
       lowStockProducts,

@@ -17,9 +17,24 @@ export class ProductVariantsService {
       isActive: true,
     }));
 
-    return this.prisma.productVariant.createMany({
+    // Crear las variantes
+    await this.prisma.productVariant.createMany({
       data: variantsData,
     });
+
+    // Calcular stock total sumando todas las variantes
+    const totalStock = variants.reduce((sum, variant) => sum + variant.stock, 0);
+
+    // Actualizar el stock del producto principal
+    await this.prisma.product.update({
+      where: { id: productId },
+      data: { stock: totalStock },
+    });
+
+    return { 
+      created: variantsData.length, 
+      totalStock 
+    };
   }
 
   async getVariantsByProduct(productId: string) {
@@ -30,9 +45,56 @@ export class ProductVariantsService {
   }
 
   async updateVariantStock(variantId: string, stock: number) {
-    return this.prisma.productVariant.update({
+    // Actualizar stock de la variante
+    const updatedVariant = await this.prisma.productVariant.update({
       where: { id: variantId },
       data: { stock },
+      include: { product: true },
     });
+
+    // Recalcular el stock total del producto
+    await this.recalculateProductStock(updatedVariant.productId);
+
+    return updatedVariant;
+  }
+
+  /**
+   * Recalcula el stock del producto sumando todas sus variantes
+   */
+  async recalculateProductStock(productId: string) {
+    const variants = await this.prisma.productVariant.findMany({
+      where: { productId },
+      select: { stock: true },
+    });
+
+    const totalStock = variants.reduce((sum, variant) => sum + variant.stock, 0);
+
+    await this.prisma.product.update({
+      where: { id: productId },
+      data: { stock: totalStock },
+    });
+
+    return totalStock;
+  }
+
+  /**
+   * Eliminar una variante y recalcular stock
+   */
+  async deleteVariant(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { productId: true },
+    });
+
+    if (!variant) {
+      throw new Error('Variante no encontrada');
+    }
+
+    await this.prisma.productVariant.delete({
+      where: { id: variantId },
+    });
+
+    // Recalcular stock del producto
+    await this.recalculateProductStock(variant.productId);
   }
 }

@@ -112,7 +112,12 @@ export class ProductsService {
       }
     }
 
-    // Crear producto con imágenes
+    let initialStock = createProductDto.stock;
+    if (processedVariants && processedVariants.length > 0) {
+      initialStock = processedVariants.reduce((sum, variant) => sum + variant.stock, 0);
+    }
+
+    // Crear producto con imágenes y stock calculado
     const product = await this.prisma.product.create({
       data: {
         userId,
@@ -121,7 +126,7 @@ export class ProductsService {
         description: createProductDto.description,
         categoryId: createProductDto.categoryId,
         price: createProductDto.price,
-        stock: createProductDto.stock,
+        stock: initialStock,
         isActive: true,
         images: {
           create: createProductDto.images.map((url, index) => ({
@@ -136,9 +141,21 @@ export class ProductsService {
       },
     });
 
-    // Crear variantes si existen
     if (processedVariants && processedVariants.length > 0) {
-      await this.variantsService.createVariants(product.id, processedVariants);
+      // Usar el método sin actualizar stock nuevamente
+      const variantsData = processedVariants.map((variant) => ({
+        productId: product.id,
+        name: variant.name,
+        sku: variant.sku,
+        price: variant.price,
+        stock: variant.stock,
+        attributes: variant.attributes,
+        isActive: true,
+      }));
+
+      await this.prisma.productVariant.createMany({
+        data: variantsData,
+      });
     }
 
     return this.getProductById(userId, product.id);
@@ -545,11 +562,16 @@ export class ProductsService {
         select: {
           id: true,
           name: true,
+          description: true,
           slug: true,
           price: true,
           stock: true,
+          salePrice: true,
           isFlashSale: true,
           isFeatured: true,
+          isComingSoon: true,
+          isNewArrival: true,
+          lowStockThreshold: true,
           images: {
             select: { url: true },
             orderBy: { order: 'asc' },
