@@ -23,10 +23,6 @@ export class RolesGuard implements CanActivate {
       throw new InsufficientPermissionsException(requiredRoles.join(', '));
     }
 
-    console.log('Usuario del token:', user);
-    console.log('Rol del usuario:', user.role);
-    console.log('Roles requeridos:', requiredRoles);
-
     if (!requiredRoles.includes(user.role)) {
       throw new InsufficientPermissionsException(requiredRoles.join(', '));
     }

@@ -17,6 +17,7 @@ import { TokenService } from './services/token.service';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UsernameValidationService } from './services/username-validation.service';
 import { RedisModule } from '../redis/redis.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RedisModule } from '../redis/redis.module';
     ConfigModule,
     MailModule,
     RedisModule,
+    BillingModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

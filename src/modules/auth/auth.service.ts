@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailVerificationService } from './services/email-verification.service';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,7 @@ export class AuthService {
     private usernameValidationService: UsernameValidationService,
     private passwordResetService: PasswordResetService,
     private emailVerificationService: EmailVerificationService,
+    private billingService: BillingService,
   ) { }
 
   // ============================================
@@ -57,13 +59,19 @@ export class AuthService {
       user.role
     );
 
-    if(!user.isVerified){
+    let nextPayment = null;
+    if (user.plan !== 'BASIC') {
+      nextPayment = await this.billingService.getNextPaymentDue(user.id);
+    }
+
+    if (!user.isVerified) {
       await this.emailVerificationService.resendVerificationCode(user.id);
     }
-    
+
     return {
       user: this.sanitizeUser(user),
       storeUrl: user.storeProfile ? `https://www.qhatupe.com/${user.username}` : null,
+      nextPayment,
       ...tokens,
     };
   }

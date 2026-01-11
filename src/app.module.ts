@@ -25,6 +25,7 @@ import r2Config from './config/r2.config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisConfig } from './config/redis.config';
 import { RedisModule } from './modules/redis/redis.module';
+import { BillingModule } from './modules/billing/billing.module';
 import googleAuthConfig from './config/google-auth.config';
 
 @Module({
@@ -56,6 +57,7 @@ import googleAuthConfig from './config/google-auth.config';
     ReviewsModule,
     SubscriptionModule,
     RedisModule,
+    BillingModule,
   ],
 })
 export class AppModule { }
