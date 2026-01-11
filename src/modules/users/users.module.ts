@@ -5,9 +5,10 @@ import { UserProfileService } from './services/user-profile.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { BannerService } from './services/banner.service';
 import { RedisModule } from '../redis/redis.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
-  imports: [DatabaseModule, RedisModule],
+  imports: [DatabaseModule, RedisModule, SubscriptionModule],
   controllers: [UsersController],
   providers: [
     UsersService,

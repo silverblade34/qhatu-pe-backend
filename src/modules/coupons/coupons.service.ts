@@ -162,16 +162,6 @@ export class CouponsService {
       select: { plan: true },
     });
 
-    const planFeatures = this.subscriptionService.getPlanFeatures(user.plan);
-
-    if (!planFeatures.canUseCoupons) {
-      const nextPlan = this.subscriptionService.getNextPlan(user.plan);
-      throw new BadRequestException(
-        `Los cupones no están disponibles en tu plan ${user.plan}. ${nextPlan ? `Actualiza a ${nextPlan} para usar esta función.` : ''
-        }`,
-      );
-    }
-
     const activeCoupons = await this.prisma.coupon.count({
       where: {
         userId,
@@ -180,9 +170,9 @@ export class CouponsService {
     });
 
     try {
-      this.subscriptionService.validateResourceLimit(
+      await this.subscriptionService.validateResourceLimit(
         user.plan,
-        'maxActiveCoupons',
+        'coupons',
         activeCoupons,
       );
     } catch (error) {

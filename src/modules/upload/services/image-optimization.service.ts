@@ -11,18 +11,18 @@ interface OptimizationConfig {
   quality: number;
   format: 'jpeg' | 'webp' | 'png';
   maxSizeKB: number;
-  aggressive?: boolean; // Si debe reducir agresivamente el tamaño
+  aggressive?: boolean;
 }
 
 @Injectable()
 export class ImageOptimizationService {
-  constructor(private subscriptionService: SubscriptionService) {}
+  constructor(private subscriptionService: SubscriptionService) { }
 
-  getOptimizationConfig(
+  async getOptimizationConfig(
     plan: SubscriptionPlan,
     directory: DirectoryType,
-  ): OptimizationConfig {
-    const features = this.subscriptionService.getPlanFeatures(plan);
+  ): Promise<OptimizationConfig> {
+    const features = await this.subscriptionService.getPlanConfig(plan);
 
     // Avatar: pequeño y optimizado
     if (directory === 'avatars') {
@@ -73,7 +73,7 @@ export class ImageOptimizationService {
       }
 
       const metadata = await image.metadata();
-      
+
       // Corregir orientación
       image = image.rotate();
 

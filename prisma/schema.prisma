@@ -225,28 +225,50 @@ enum BillingStatus {
 model PlanConfig {
   id   String @id @default(uuid())
   plan Plan   @unique
-  
+
   // Precios
   monthlyPrice Float
   yearlyPrice  Float
-  
-  // Límites del plan
-  maxProducts        Int
-  maxImages          Int
-  maxCategories      Int
-  allowCustomDomain  Boolean @default(false)
-  allowAnalytics     Boolean @default(false)
-  allowCoupons       Boolean @default(false)
-  
+
+  // Límites de productos
+  maxProducts         Int
+  maxImagesPerProduct Int
+  maxImageSizeKB      Int
+  imageQuality        Int @default(85)
+  imageMaxWidth       Int @default(1600)
+  imageMaxHeight      Int @default(1600)
+
+  // Límites de cupones
+  maxActiveCoupons Int
+  canUseCoupons    Boolean @default(true)
+
+  // Límites de marketing
+  maxBanners   Int @default(1)
+  maxOffers    Int @default(0)
+  maxCampaigns Int @default(0)
+
+  // Límites de categorías
+  maxCategories Int @default(5)
+
+  // Funcionalidades
+  canUseFlashSales   Boolean @default(false)
+  canExportOrders    Boolean @default(false)
+  canUseAnalytics    Boolean @default(false)
+  canUseCustomDomain Boolean @default(false)
+  hasWatermark       Boolean @default(true)
+
+  // Límites de órdenes
+  maxOrdersPerMonth Int @default(100)
+
   // Días de gracia después del vencimiento
   gracePeriodDays Int @default(2)
-  
+
   // Configuración
   isActive Boolean @default(true)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("plan_configs")
 }
 

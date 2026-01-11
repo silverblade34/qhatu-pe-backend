@@ -25,7 +25,7 @@ export class UploadService {
     this.imageOptimization.validateFile(file);
 
     // Obtener config de optimización según tipo
-    const optimizationConfig = this.imageOptimization.getOptimizationConfig(
+    const optimizationConfig = await this.imageOptimization.getOptimizationConfig(
       plan,
       directory,
     );
@@ -62,7 +62,7 @@ export class UploadService {
       throw new BadRequestException('No se han proporcionado archivos');
     }
 
-    this.subscriptionService.validateFileUpload(plan, files.length);
+   await this.subscriptionService.validateImageUpload(plan, files.length);
 
     const uploadPromises = files.map((file) =>
       this.uploadFile(file, directory, username, plan, isTemporary),

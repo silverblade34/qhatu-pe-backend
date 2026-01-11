@@ -7,7 +7,7 @@ export class ProductValidationService {
   constructor(
     private prisma: PrismaService,
     private subscriptionService: SubscriptionService,
-  ) {}
+  ) { }
 
   async validateResourceLimits(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
@@ -20,9 +20,9 @@ export class ProductValidationService {
     });
 
     try {
-      this.subscriptionService.validateResourceLimit(
+     await this.subscriptionService.validateResourceLimit(
         user.plan,
-        'maxProducts',
+        'products',
         productCount,
       );
     } catch (error) {
@@ -73,7 +73,7 @@ export class ProductValidationService {
     });
 
     try {
-      this.subscriptionService.validateFileUpload(user.plan, imageCount);
+     await this.subscriptionService.validateImageUpload(user.plan, imageCount);
     } catch (error) {
       throw new BadRequestException(error.message);
     }

@@ -1,77 +1,105 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import {
-  SubscriptionPlan,
-  PLAN_FEATURES,
-  PLAN_HIERARCHY,
-} from 'src/common/constants/subscription-plan.constants';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../database/prisma.service';
+import { Plan } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionService {
+  constructor(private prisma: PrismaService) {}
+
   /**
-   * Obtiene las características de un plan
+   * Obtener configuración de un plan desde la BD
    */
-  getPlanFeatures(plan: SubscriptionPlan) {
-    return PLAN_FEATURES[plan];
+  async getPlanConfig(plan: Plan) {
+    const config = await this.prisma.planConfig.findUnique({
+      where: { plan },
+    });
+
+    if (!config) {
+      throw new NotFoundException(`Configuración para plan ${plan} no encontrada`);
+    }
+
+    return config;
   }
 
   /**
-   * Verifica si el usuario ha alcanzado el límite de un recurso
+   * Validar límite de un recurso
    */
-  validateResourceLimit(
-    plan: SubscriptionPlan,
-    resource: keyof typeof PLAN_FEATURES.BASIC,
+  async validateResourceLimit(
+    plan: Plan,
+    resourceType: 'products' | 'coupons' | 'banners' | 'offers' | 'campaigns' | 'categories',
     currentCount: number,
-  ): void {
-    const limit = PLAN_FEATURES[plan][resource] as number;
-    
+  ): Promise<void> {
+    const config = await this.getPlanConfig(plan);
+
+    const limitMap = {
+      products: config.maxProducts,
+      coupons: config.maxActiveCoupons,
+      banners: config.maxBanners,
+      offers: config.maxOffers,
+      campaigns: config.maxCampaigns,
+      categories: config.maxCategories,
+    };
+
+    const limit = limitMap[resourceType];
+
     if (currentCount >= limit) {
       const nextPlan = this.getNextPlan(plan);
       throw new BadRequestException(
-        `Has alcanzado el límite de ${limit} ${resource} en tu plan ${plan}. ${
-          nextPlan ? `Actualiza a ${nextPlan} para continuar.` : ''
+        `Has alcanzado el límite de ${limit} ${resourceType} en tu plan ${plan}.${
+          nextPlan ? ` Actualiza a ${nextPlan} para continuar.` : ''
         }`,
       );
     }
   }
 
   /**
-   * Valida múltiples archivos según plan
+   * Validar funcionalidad específica
    */
-  validateFileUpload(
-    plan: SubscriptionPlan,
-    fileCount: number,
-  ): void {
-    const maxFiles = PLAN_FEATURES[plan].maxImagesPerProduct;
+  async validateFeature(plan: Plan, feature: 'flashSales' | 'analytics' | 'customDomain' | 'exportOrders'): Promise<void> {
+    const config = await this.getPlanConfig(plan);
 
-    if (fileCount > maxFiles) {
+    const featureMap = {
+      flashSales: config.canUseFlashSales,
+      analytics: config.canUseAnalytics,
+      customDomain: config.canUseCustomDomain,
+      exportOrders: config.canExportOrders,
+    };
+
+    if (!featureMap[feature]) {
+      const nextPlan = this.getNextPlan(plan);
       throw new BadRequestException(
-        `Tu plan ${plan} permite máximo ${maxFiles} imágenes. Actualiza para subir más.`,
+        `Esta funcionalidad requiere plan ${nextPlan || 'superior'}. Tu plan actual: ${plan}.`,
       );
     }
   }
 
   /**
-   * Obtiene el siguiente plan disponible
+   * Validar subida de imágenes
    */
-  getNextPlan(currentPlan: SubscriptionPlan): SubscriptionPlan | null {
-    const plans: SubscriptionPlan[] = ['BASIC', 'PRO', 'PREMIUM'];
+  async validateImageUpload(plan: Plan, fileCount: number): Promise<void> {
+    const config = await this.getPlanConfig(plan);
+
+    if (fileCount > config.maxImagesPerProduct) {
+      throw new BadRequestException(
+        `Tu plan ${plan} permite máximo ${config.maxImagesPerProduct} imágenes por producto.`,
+      );
+    }
+  }
+
+  /**
+   * Obtener siguiente plan
+   */
+  private getNextPlan(currentPlan: Plan): Plan | null {
+    const plans: Plan[] = ['BASIC', 'PRO', 'PREMIUM'];
     const currentIndex = plans.indexOf(currentPlan);
     return currentIndex < plans.length - 1 ? plans[currentIndex + 1] : null;
   }
 
   /**
-   * Verifica si un plan es superior a otro
+   * Comparar planes
    */
-  isPlanHigherThan(plan1: SubscriptionPlan, plan2: SubscriptionPlan): boolean {
-    return PLAN_HIERARCHY[plan1] > PLAN_HIERARCHY[plan2];
-  }
-
-  /**
-   * Calcula el ahorro anual
-   */
-  getAnnualSavings(plan: SubscriptionPlan): number {
-    const features = this.getPlanFeatures(plan);
-    const monthlyTotal = features.monthlyPrice * 12;
-    return monthlyTotal - features.annualPrice;
+  isPlanHigherThan(plan1: Plan, plan2: Plan): boolean {
+    const hierarchy = { BASIC: 1, PRO: 2, PREMIUM: 3 };
+    return hierarchy[plan1] > hierarchy[plan2];
   }
 }

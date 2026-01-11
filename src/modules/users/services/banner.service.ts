@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../../database/prisma.service';
 import { CreateBannerDto } from '../dto/create-banner.dto';
 import { UpdateBannerDto } from '../dto/update-banner.dto';
+import { SubscriptionService } from 'src/modules/subscription/subscription.service';
 
 @Injectable()
 export class BannerService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private subscriptionService: SubscriptionService
+  ) { }
 
   async createBanner(userId: string, data: CreateBannerDto) {
     const storeProfile = await this.prisma.storeProfile.findUnique({
@@ -22,18 +26,11 @@ export class BannerService {
       where: { storeProfileId: storeProfile.id },
     });
 
-    const limits = {
-      FREE: 1,
-      BASIC: 3,
-      PRO: 10,
-      PREMIUM: 999,
-    };
-
-    if (bannerCount >= limits[user.plan]) {
-      throw new BadRequestException(
-        `Tu plan ${user.plan} permite hasta ${limits[user.plan]} banners`
-      );
-    }
+    await this.subscriptionService.validateResourceLimit(
+      user.plan,
+      'banners',
+      bannerCount,
+    );
 
     return this.prisma.banner.create({
       data: {
