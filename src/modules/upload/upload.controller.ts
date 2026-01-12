@@ -165,4 +165,48 @@ export class UploadController {
       url,
     };
   }
+
+    /**
+ * Sube favicon de usuario
+ */
+  @Post('favicon')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('favicon', {
+      limits: {
+        fileSize: 1 * 1024 * 1024,
+      },
+      fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+          'image/png',
+        ];
+
+        if (!allowedMimes.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException(
+              'Solo se permiten imágenes PNG'
+            ),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadFavicon(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No se ha proporcionado ningún archivo');
+    }
+
+    const url = await this.uploadService.uploadFavicon(file, user.username);
+
+    return {
+      success: true,
+      message: 'Favicon actualizado correctamente',
+      url,
+    };
+  }
 }

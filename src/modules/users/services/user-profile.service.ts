@@ -52,6 +52,9 @@ export class UserProfileService {
         requirePhone: updateProfileDto.requirePhone,
         requireEmail: updateProfileDto.requireEmail,
         requireAddress: updateProfileDto.requireAddress,
+        primaryColor: updateProfileDto.primaryColor,
+        secondaryColor: updateProfileDto.secondaryColor,
+        favicon: updateProfileDto.favicon,
       },
     });
 

@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { SubscriptionService } from '../../subscription/subscription.service';
 import { SubscriptionPlan } from 'src/common/constants/subscription-plan.constants';
 
-type DirectoryType = 'avatars' | 'banners' | 'products';
+type DirectoryType = 'avatars' | 'banners' | 'products' | 'favicons';
 
 interface OptimizationConfig {
   maxWidth: number;

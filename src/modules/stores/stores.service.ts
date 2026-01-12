@@ -189,7 +189,6 @@ export class StoresService {
           },
           select: {
             id: true,
-            code: true,
             discountType: true,
             discountValue: true,
             minPurchase: true,
@@ -225,6 +224,9 @@ export class StoresService {
       requirePhone: user.storeProfile.requirePhone,
       requireEmail: user.storeProfile.requireEmail,
       requireAddress: user.storeProfile.requireAddress,
+      primaryColor: user.storeProfile.primaryColor,
+      secondaryColor: user.storeProfile.secondaryColor,
+      favicon: user.storeProfile.favicon,
       memberSince: user.createdAt,
       rating: {
         average: Math.round(avgRating * 10) / 10,

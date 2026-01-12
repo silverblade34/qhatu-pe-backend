@@ -1,9 +1,9 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsBoolean, 
-  IsArray, 
-  IsUrl, 
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  IsUrl,
   IsUUID,
   ValidateNested,
   MaxLength,
@@ -64,7 +64,23 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @IsUrl()
+  favicon?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   whatsapp?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  primaryColor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  secondaryColor?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -19,6 +19,10 @@ export default registerAs('r2', () => ({
       name: process.env.R2_BUCKET_MEDIA || 'qhatupe-media',
       publicUrl: process.env.R2_PUBLIC_URL_MEDIA || 'https://media.qhatupe.com',
     },
+    favicons: {
+      name: process.env.R2_BUCKET_MEDIA || 'qhatupe-media',
+      publicUrl: process.env.R2_PUBLIC_URL_MEDIA || 'https://media.qhatupe.com',
+    },
   },
 }));
 

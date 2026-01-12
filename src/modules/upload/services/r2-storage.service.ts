@@ -9,7 +9,7 @@ import slugify from 'slugify';
 import { r2Client } from 'src/config/r2.config';
 import { SubscriptionPlan } from 'src/common/constants/subscription-plan.constants';
 
-type DirectoryType = 'avatars' | 'banners' | 'products';
+type DirectoryType = 'avatars' | 'banners' | 'products' | 'favicons';
 
 interface UploadMetadata {
   originalName: string;

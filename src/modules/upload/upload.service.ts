@@ -4,7 +4,7 @@ import { SubscriptionPlan } from 'src/common/constants/subscription-plan.constan
 import { ImageOptimizationService } from './services/image-optimization.service';
 import { R2StorageService } from './services/r2-storage.service';
 
-type DirectoryType = 'avatars' | 'banners' | 'products';
+type DirectoryType = 'avatars' | 'banners' | 'products' | 'favicons';
 
 @Injectable()
 export class UploadService {
@@ -12,7 +12,7 @@ export class UploadService {
     private subscriptionService: SubscriptionService,
     private imageOptimization: ImageOptimizationService,
     private r2Storage: R2StorageService,
-  ) {}
+  ) { }
 
   async uploadFile(
     file: Express.Multer.File,
@@ -62,7 +62,7 @@ export class UploadService {
       throw new BadRequestException('No se han proporcionado archivos');
     }
 
-   await this.subscriptionService.validateImageUpload(plan, files.length);
+    await this.subscriptionService.validateImageUpload(plan, files.length);
 
     const uploadPromises = files.map((file) =>
       this.uploadFile(file, directory, username, plan, isTemporary),
@@ -99,5 +99,13 @@ export class UploadService {
     plan: SubscriptionPlan = 'BASIC',
   ): Promise<string[]> {
     return this.uploadFiles(files, 'products', username, plan, true);
+  }
+
+  async uploadFavicon(
+    files: Express.Multer.File,
+    username: string,
+    plan: SubscriptionPlan = 'BASIC',
+  ): Promise<string> {
+    return this.uploadFile(files, 'favicons', username, plan, false);
   }
 }

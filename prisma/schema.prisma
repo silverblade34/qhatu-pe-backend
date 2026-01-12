@@ -277,11 +277,14 @@ model StoreProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  storeName String
-  bio       String? @db.Text
-  logo      String?
-  phone     String?
-  whatsapp  String? // Número de WhatsApp para pedidos
+  storeName      String
+  bio            String? @db.Text
+  logo           String?
+  phone          String?
+  whatsapp       String?
+  primaryColor   String?
+  secondaryColor String?
+  favicon        String?
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
