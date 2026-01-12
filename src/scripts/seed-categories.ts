@@ -60,6 +60,10 @@ export async function seedCategories() {
       description: 'Servicios profesionales, técnicos o digitales',
     },
     {
+      name: 'Coleccionables y Cultura Geek',
+      description: 'Funkos, figuras, anime, gaming y merchandising friki',
+    },
+    {
       name: 'Otros',
       description: 'Productos no clasificados en otras categorías',
     },

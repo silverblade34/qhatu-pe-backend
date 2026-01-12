@@ -46,7 +46,7 @@ export class OrdersController {
     const result = await this.ordersService.create(createOrderDto);
 
     const order: any = result;
-    await this.cacheInvalidation.invalidateOrders(order.sellerId);
+    await this.cacheInvalidation.invalidateOrders(createOrderDto.storeUserId);
 
     return result;
   }

@@ -95,7 +95,7 @@ export const DEFAULT_PRODUCT_CATEGORIES = {
   ],
 
   // Mascotas
-  Mascotas: [
+  'Mascotas': [
     { name: 'Alimentos para Mascotas', slug: 'alimentos-mascotas', icon: '🍖', order: 1 },
     { name: 'Accesorios para Perros', slug: 'accesorios-perros', icon: '🐕', order: 2 },
     { name: 'Accesorios para Gatos', slug: 'accesorios-gatos', icon: '🐈', order: 3 },
@@ -139,7 +139,7 @@ export const DEFAULT_PRODUCT_CATEGORIES = {
   ],
 
   // Servicios
-  Servicios: [
+  'Servicios': [
     { name: 'Servicios Profesionales', slug: 'servicios-profesionales', icon: '💼', order: 1 },
     { name: 'Servicios Técnicos', slug: 'servicios-tecnicos', icon: '🔧', order: 2 },
     { name: 'Servicios Digitales', slug: 'servicios-digitales', icon: '💻', order: 3 },
@@ -148,6 +148,18 @@ export const DEFAULT_PRODUCT_CATEGORIES = {
     { name: 'Educación y Capacitación', slug: 'educacion-capacitacion', icon: '📚', order: 6 },
     { name: 'Eventos', slug: 'eventos', icon: '🎉', order: 7 },
     { name: 'Belleza y Estética', slug: 'belleza-estetica', icon: '💆', order: 8 },
+  ],
+
+  // Coleccionables y Cultura Geek
+  'Coleccionables y Cultura Geek': [
+    { name: 'Funkos', slug: 'funkos', icon: '🧸', order: 1 },
+    { name: 'Figuras Coleccionables', slug: 'figuras-coleccionables', icon: '🗿', order: 2 },
+    { name: 'Anime y Manga', slug: 'anime-manga', icon: '🍥', order: 3 },
+    { name: 'Peluches', slug: 'peluches', icon: '🐻', order: 4 },
+    { name: 'Merchandising', slug: 'merchandising', icon: '🎁', order: 5 },
+    { name: 'Comics', slug: 'comics', icon: '📘', order: 6 },
+    { name: 'Gaming Coleccionable', slug: 'gaming-coleccionable', icon: '🎮', order: 7 },
+    { name: 'K-Pop y Cultura Pop', slug: 'kpop-cultura-pop', icon: '🎤', order: 8 },
   ],
 
   // Otros
