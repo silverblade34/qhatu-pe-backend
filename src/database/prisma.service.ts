@@ -10,10 +10,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           url: process.env.DATABASE_URL,
         },
       },
-      log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     });
   }
-
 
   async onModuleInit() {
     await this.$connect();
@@ -25,16 +24,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     console.log('Database disconnected');
   }
 
-  // Helper para limpiar datos en tests
   async cleanDatabase() {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Cannot clean database in production');
     }
-
     const models = Reflect.ownKeys(this).filter(
       (key) => key[0] !== '_' && key !== 'constructor',
     );
-
     return Promise.all(
       models.map((modelKey) => {
         const model = this[modelKey as keyof PrismaService];

@@ -181,18 +181,10 @@ export class OrdersService {
     };
   }
 
-  /**
-   * Crea una orden real en la base de datos
-   * (El vendedor confirma que la venta se realizó)
-   */
-  /**
-   * Crea una orden real en la base de datos
-   * (El vendedor confirma que la venta se realizó)
-   */
   async create(createOrderDto: CreateOrderDto) {
     const { items, couponCode, customerInfo, paymentMethod } = createOrderDto;
 
-    // Validar productos y calcular totales
+    // Validar productos y calcular totales FUERA de la transacción
     const productIds = [...new Set(items.map(item => item.productId))];
     const products = await this.prisma.product.findMany({
       where: {
@@ -222,7 +214,7 @@ export class OrdersService {
 
     let subtotal = 0;
     const orderItems = [];
-    const itemsDetails = []; // Para el mensaje de WhatsApp
+    const itemsDetails = [];
 
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
@@ -259,7 +251,6 @@ export class OrdersService {
         subtotal: itemSubtotal,
       });
 
-      // Para el mensaje de WhatsApp
       itemsDetails.push({
         name: product.name,
         variant: variantName,
@@ -269,7 +260,7 @@ export class OrdersService {
       });
     }
 
-    // Aplicar cupón
+    // Aplicar cupón FUERA de la transacción
     let discount = 0;
     let couponId = null;
     let couponInfo = null;
@@ -294,80 +285,99 @@ export class OrdersService {
 
     const total = subtotal - discount;
 
-    // Generar número de orden
+    // Generar número de orden ANTES de la transacción
     const orderNumber = await this.generateOrderNumber();
 
-    // Crear orden en transacción
-    const order = await this.prisma.$transaction(async (tx) => {
-      // Crear orden
-      const newOrder = await tx.order.create({
-        data: {
-          orderNumber,
-          userId: createOrderDto.storeUserId,
-          customerName: customerInfo.name,
-          customerPhone: customerInfo.phone,
-          customerEmail: customerInfo.email,
-          deliveryAddress: customerInfo.address,
-          deliveryNotes: customerInfo.notes,
-          status: OrderStatus.PENDING,
-          paymentMethod,
-          paymentStatus: PaymentStatus.PENDING,
-          subtotal,
-          discount,
-          total,
-          couponId,
-          items: {
-            create: orderItems,
+    // TRANSACCIÓN MÁS CORTA Y EFICIENTE
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        // Crear orden
+        const newOrder = await tx.order.create({
+          data: {
+            orderNumber,
+            userId: createOrderDto.storeUserId,
+            customerName: customerInfo.name,
+            customerPhone: customerInfo.phone,
+            customerEmail: customerInfo.email,
+            deliveryAddress: customerInfo.address,
+            deliveryNotes: customerInfo.notes,
+            status: OrderStatus.PENDING,
+            paymentMethod,
+            paymentStatus: PaymentStatus.PENDING,
+            subtotal,
+            discount,
+            total,
+            couponId,
+            items: {
+              create: orderItems,
+            },
           },
-        },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: {
-                  images: { take: 1 },
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: { take: 1 },
+                  },
                 },
               },
             },
+            coupon: true,
           },
-          coupon: true,
-        },
-      });
-
-      // Actualizar uso del cupón
-      if (couponId) {
-        await tx.coupon.update({
-          where: { id: couponId },
-          data: { usageCount: { increment: 1 } },
         });
-      }
 
-      // Reducir stock de productos/variantes
-      for (const item of items) {
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
+        // Actualizar uso del cupón y stock en paralelo
+        const updates = [];
+
+        if (couponId) {
+          updates.push(
+            tx.coupon.update({
+              where: { id: couponId },
+              data: { usageCount: { increment: 1 } },
+            })
+          );
         }
-      }
 
-      return newOrder;
+        // Reducir stock de productos/variantes
+        for (const item of items) {
+          if (item.variantId) {
+            updates.push(
+              tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: { decrement: item.quantity } },
+              })
+            );
+          } else {
+            updates.push(
+              tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { decrement: item.quantity } },
+              })
+            );
+          }
+        }
+
+        await Promise.all(updates);
+
+        return newOrder;
+      },
+      {
+        maxWait: 10000, // Espera máxima para adquirir una conexión (10s)
+        timeout: 30000, // Timeout de la transacción (30s)
+        isolationLevel: 'ReadCommitted', // Nivel de aislamiento menos restrictivo
+      }
+    );
+
+    // Notificación FUERA de la transacción (async, no bloqueante)
+    this.notificationsService.notifyNewOrder(order.id).catch(err => {
+      console.error('Error sending notification:', err);
     });
 
-    await this.notificationsService.notifyNewOrder(order.id);
-
-    // Generar mensaje de WhatsApp para confirmación
+    // Resto del código para generar mensaje de WhatsApp...
     const sellerUsername = products[0].user.username;
     const storeName = products[0].user.storeProfile?.storeName || sellerUsername;
     const storePhone = products[0].user.storeProfile?.phone;
 
-    // Construir mensaje de WhatsApp con el número de orden
     let message = `✅ *Pedido Confirmado #${orderNumber}*\n\n`;
     message += `¡Hola *${storeName}*! Tu pedido ha sido registrado:\n\n`;
 
@@ -403,7 +413,6 @@ export class OrdersService {
 
     message += `\n🌐 Ver productos: https://www.qhatupe.com/${sellerUsername}`;
 
-    // Generar link de WhatsApp
     const whatsappNumber = storePhone || '';
     const encodedMessage = encodeURIComponent(message);
     const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
@@ -666,16 +675,33 @@ export class OrdersService {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
 
-    // Contar órdenes del día
-    const count = await this.prisma.order.count({
-      where: {
-        createdAt: {
-          gte: new Date(date.setHours(0, 0, 0, 0)),
-        },
-      },
-    });
+    let attempts = 0;
+    const maxAttempts = 5;
 
-    const sequence = String(count + 1).padStart(4, '0');
-    return `ORD-${year}${month}${day}-${sequence}`;
+    while (attempts < maxAttempts) {
+      try {
+        const timestamp = Date.now().toString().slice(-8);
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const orderNumber = `ORD-${year}${month}${day}-${timestamp}${random}`;
+
+        const exists = await this.prisma.order.findUnique({
+          where: { orderNumber },
+          select: { id: true },
+        });
+
+        if (!exists) {
+          return orderNumber;
+        }
+
+        attempts++;
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error('No se pudo generar un número de orden único');
   }
 }
