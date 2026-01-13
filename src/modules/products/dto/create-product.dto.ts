@@ -1,11 +1,12 @@
-import { 
-  IsString, 
-  IsNumber, 
-  IsArray, 
-  IsOptional, 
-  Min, 
+import {
+  IsString,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  Min,
   MaxLength,
   ValidateNested,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -22,9 +23,9 @@ export class CreateProductDto {
   @MaxLength(2000)
   description: string;
 
-  @ApiPropertyOptional({ 
-    example: 'clxxxxxx', 
-    description: 'ID de la categoría de producto (opcional, categorías personalizadas del vendedor)' 
+  @ApiPropertyOptional({
+    example: 'clxxxxxx',
+    description: 'ID de la categoría de producto (opcional, categorías personalizadas del vendedor)'
   })
   @IsOptional()
   @IsString()
@@ -40,7 +41,7 @@ export class CreateProductDto {
   @Min(0)
   stock: number;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: ['https://ejemplo.com/imagen1.jpg', 'https://ejemplo.com/imagen2.jpg'],
     description: 'URLs de las imágenes (máximo 5)',
     type: [String]
@@ -49,7 +50,7 @@ export class CreateProductDto {
   @IsString({ each: true })
   images: string[];
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     type: [CreateVariantDto],
     description: 'Variantes del producto (tallas, colores, etc.)'
   })
@@ -58,5 +59,20 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
   variants?: CreateVariantDto[];
+
+  @ApiPropertyOptional({ description: 'Si es oferta flash' })
+  @IsOptional()
+  @IsBoolean()
+  isFlashSale?: boolean;
+
+  @ApiPropertyOptional({ description: 'Si es producto destacado' })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Si es próximamente' })
+  @IsOptional()
+  @IsBoolean()
+  isComingSoon?: boolean;
 }
 

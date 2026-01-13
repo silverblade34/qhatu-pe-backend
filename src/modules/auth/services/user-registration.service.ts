@@ -282,11 +282,6 @@ export class UserRegistrationService {
       user.role
     );
 
-    // Enviar email de bienvenida
-    this.mailService
-      .sendWelcomeEmail(user.email, user.fullName, user.username)
-      .catch((error) => console.error('Error enviando bienvenida:', error));
-
     return {
       message: 'Registro exitoso con Google',
       user: this.sanitizeUser(user),

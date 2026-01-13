@@ -24,7 +24,7 @@ export class ProductsService {
     private validationService: ProductValidationService,
     private queryService: ProductQueryService,
     private imageService: ProductImageService,
-  ) {}
+  ) { }
 
   async create(userId: string, createProductDto: CreateProductDto) {
     // Validaciones
@@ -83,6 +83,9 @@ export class ProductsService {
         categoryId: createProductDto.categoryId,
         price: createProductDto.price,
         stock: initialStock,
+        isFlashSale: createProductDto.isFlashSale,
+        isFeatured: createProductDto.isFeatured,
+        isComingSoon: createProductDto.isComingSoon,
         isActive: true,
         images: {
           create: this.imageService.formatImagesForCreate(
