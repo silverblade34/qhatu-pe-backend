@@ -57,7 +57,7 @@ export class StoresController {
   })
   async searchStores(
     @Query('q') query?: string,
-    @Query('category') category?: string,
+    @Query('categoryId') categoryId?: string,
     @Query('verified') verified?: string,
     @Query('hasOffers') hasOffers?: string,
     @Query('sort') sort?: string,
@@ -66,7 +66,7 @@ export class StoresController {
   ) {
     return this.storesService.searchStores({
       query,
-      category,
+      categoryId,
       verified: verified === 'true',
       hasOffers: hasOffers === 'true',
       sort: sort as any,

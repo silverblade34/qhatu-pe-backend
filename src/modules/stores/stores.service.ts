@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { Prisma } from '@prisma/client';
 
 interface SearchStoresParams {
   query?: string;
-  category?: string;
+  categoryId?: string;
   verified?: boolean;
   hasOffers?: boolean;
   sort?: 'rating' | 'products' | 'newest';
@@ -16,43 +17,27 @@ export class StoresService {
   constructor(private prisma: PrismaService) { }
 
   async searchStores(params: SearchStoresParams) {
-    const { query, category, verified, hasOffers, sort, page, limit } = params;
+    const { query, categoryId, verified, hasOffers, sort, page, limit } = params;
     const skip = (page - 1) * limit;
 
-    // Construir filtros dinámicos
-    const where: any = {
+    const where: Prisma.UserWhereInput = {
       storeProfile: {
         isActive: true,
+        ...(categoryId ? { categoryId } : {}),
       },
+      ...(verified === true ? { isVerified: true } : {}),
     };
 
-    // Filtro por búsqueda de texto
     if (query) {
+      const searchCondition = { contains: query, mode: Prisma.QueryMode.insensitive };
       where.OR = [
-        { username: { contains: query, mode: 'insensitive' } },
-        { fullName: { contains: query, mode: 'insensitive' } },
-        { storeProfile: { storeName: { contains: query, mode: 'insensitive' } } },
-        { storeProfile: { bio: { contains: query, mode: 'insensitive' } } },
+        { username: searchCondition },
+        { fullName: searchCondition },
+        { storeProfile: { storeName: searchCondition } },
+        { storeProfile: { bio: searchCondition } },
       ];
     }
 
-    // Filtro por verificación
-    if (verified) {
-      where.isVerified = true;
-    }
-
-    // Filtro por categoría
-    if (category) {
-      where.products = {
-        some: {
-          category: {
-            slug: category,
-          },
-        },
-      };
-    }
-
-    // Filtro por ofertas (tiendas con cupones activos)
     if (hasOffers) {
       where.coupons = {
         some: {
@@ -61,13 +46,14 @@ export class StoresService {
         },
       };
     }
-
-    // Obtener tiendas con sus datos
+    console.log("============where============")
+    console.log(JSON.stringify(where, null, 2))
     const [stores, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
         take: limit,
+        orderBy: sort === 'newest' ? { createdAt: 'desc' } : { createdAt: 'desc' },
         select: {
           id: true,
           username: true,
@@ -79,59 +65,60 @@ export class StoresService {
               storeName: true,
               bio: true,
               logo: true,
+              banners: true,
+              badges: true,
               category: {
                 select: {
                   id: true,
                   name: true,
-                }
+                },
               },
-              banners: true,
-              badges: true,
             },
-          },
-          products: {
-            where: { isActive: true },
-            select: { id: true },
           },
           reviews: {
             select: { rating: true },
           },
-          coupons: {
-            where: {
-              status: 'ACTIVE',
-              endDate: { gte: new Date() },
+          _count: {
+            select: {
+              products: { where: { isActive: true } },
+              coupons: {
+                where: {
+                  status: 'ACTIVE',
+                  endDate: { gte: new Date() },
+                },
+              },
+              reviews: true,
             },
-            select: { id: true },
           },
         },
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    // Calcular rating y formatear respuesta
-    const formattedStores = stores.map(store => {
+    let formattedStores = stores.map((store) => {
+      const reviewCount = store._count.reviews;
       const avgRating =
-        store.reviews.length > 0
-          ? store.reviews.reduce((acc, r) => acc + r.rating, 0) / store.reviews.length
+        reviewCount > 0
+          ? store.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
           : 0;
 
       return {
         id: store.id,
         username: store.username,
-        storeName: store.storeProfile.storeName,
-        bio: store.storeProfile.bio,
-        logo: store.storeProfile.logo,
-        banners: store.storeProfile.banners,
-        category: store.storeProfile.category,
+        storeName: store.storeProfile?.storeName || store.fullName,
+        bio: store.storeProfile?.bio,
+        logo: store.storeProfile?.logo,
+        banners: store.storeProfile?.banners || [],
+        category: store.storeProfile?.category,
         isVerified: store.isVerified,
-        badges: store.storeProfile.badges,
+        badges: store.storeProfile?.badges || [],
         rating: {
           average: Math.round(avgRating * 10) / 10,
-          count: store.reviews.length,
+          count: reviewCount,
         },
         stats: {
-          totalProducts: store.products.length,
-          hasOffers: store.coupons.length > 0,
+          totalProducts: store._count.products,
+          hasOffers: store._count.coupons > 0,
         },
         url: `https://www.qhatupe.com/${store.username}`,
       };
@@ -141,8 +128,6 @@ export class StoresService {
       formattedStores.sort((a, b) => b.rating.average - a.rating.average);
     } else if (sort === 'products') {
       formattedStores.sort((a, b) => b.stats.totalProducts - a.stats.totalProducts);
-    } else if (sort === 'newest') {
-      // Ya viene ordenado por createdAt desde la query
     }
 
     return {

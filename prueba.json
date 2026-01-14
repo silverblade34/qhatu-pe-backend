@@ -1,0 +1,61 @@
+{
+    "status": true,
+    "message": "Successful",
+    "data": {
+        "stores": [
+            {
+                "id": "04d9b6a7-67a7-44f1-b753-e707af3a8684",
+                "username": "verde_vita",
+                "storeName": "Verde Vita",
+                "bio": "🌱 Plantas ornamentales y suculentas | Verde en casa",
+                "logo": "https://cdn.qhatupe.com/avatars/plantas_verde/geminigeneratedimaged6lv2rd6lv2rd6lv-3.webp",
+                "banners": [
+                    {
+                        "id": "10f2aaa5-6938-403f-853d-385787d972f1",
+                        "storeProfileId": "4a8d6d6a-7b7a-4d28-b177-8695686b8f59",
+                        "title": "¡Ofertas especiales en Plantas Verde!",
+                        "description": "No te pierdas nuestras promociones",
+                        "imageDesktop": "https://media.qhatupe.com/banners/plantas_verde/geminigeneratedimaged6lv2rd6lv2rd6lv-2-2.webp",
+                        "imageMobile": "https://media.qhatupe.com/banners/plantas_verde/geminigeneratedimaged6lv2rd6lv2rd6lv-2.webp",
+                        "type": "PROMOTIONAL",
+                        "ctaText": null,
+                        "ctaLink": null,
+                        "isActive": true,
+                        "order": 0,
+                        "showButton": false,
+                        "openInNewTab": false,
+                        "clicks": 0,
+                        "views": 0,
+                        "startDate": null,
+                        "endDate": null,
+                        "createdAt": "2026-01-12T02:32:18.755Z",
+                        "updatedAt": "2026-01-12T17:56:02.433Z"
+                    }
+                ],
+                "category": {
+                    "id": "98a0d775-9e3d-4871-9cc9-af9e4091e50e",
+                    "name": "Hogar y Decoración"
+                },
+                "isVerified": true,
+                "badges": [
+                    "ECO_FRIENDLY"
+                ],
+                "rating": {
+                    "average": 0,
+                    "count": 0
+                },
+                "stats": {
+                    "totalProducts": 5,
+                    "hasOffers": true
+                },
+                "url": "https://www.qhatupe.com/verde_vita"
+            }
+        ],
+        "pagination": {
+            "total": 20,
+            "page": 1,
+            "limit": 20,
+            "totalPages": 1
+        }
+    }
+}
