@@ -4,7 +4,7 @@ import { FilterProductDto, AvailabilityFilter } from '../dto/filter-product.dto'
 
 @Injectable()
 export class ProductQueryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getProductById(userId: string, productId: string) {
     const product = await this.prisma.product.findUnique({
@@ -67,7 +67,7 @@ export class ProductQueryService {
     const avgRating =
       product.reviews.length > 0
         ? product.reviews.reduce((acc, r) => acc + r.rating, 0) /
-          product.reviews.length
+        product.reviews.length
         : 0;
 
     return {
@@ -116,7 +116,12 @@ export class ProductQueryService {
             select: { name: true, slug: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { isFlashSale: 'desc' },
+          { salePrice: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
         take: filters.limit || 20,
         skip: filters.offset || 0,
       }),

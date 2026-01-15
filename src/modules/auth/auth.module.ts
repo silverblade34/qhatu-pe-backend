@@ -18,6 +18,7 @@ import { UserRegistrationService } from './services/user-registration.service';
 import { UsernameValidationService } from './services/username-validation.service';
 import { RedisModule } from '../redis/redis.module';
 import { BillingModule } from '../billing/billing.module';
+import { VercelModule } from '../vercel/vercel.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { BillingModule } from '../billing/billing.module';
     MailModule,
     RedisModule,
     BillingModule,
+    VercelModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

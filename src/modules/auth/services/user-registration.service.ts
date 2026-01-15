@@ -11,6 +11,7 @@ import { RegisterCustomerDto } from '../dto/register-customer.dto';
 import { GoogleRegisterDto } from '../dto/google-register.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { CacheInvalidationService } from 'src/modules/redis/cache-invalidation.service';
+import { VercelService } from 'src/modules/vercel/vercel.service';
 
 @Injectable()
 export class UserRegistrationService {
@@ -23,6 +24,7 @@ export class UserRegistrationService {
     private usernameValidationService: UsernameValidationService,
     private googleAuthService: GoogleAuthService,
     private emailVerificationService: EmailVerificationService,
+    private vercelService: VercelService
   ) { }
 
   // REGISTRO DE VENDEDORES
@@ -90,6 +92,12 @@ export class UserRegistrationService {
         storeProfile: true,
       },
     });
+
+    try {
+      await this.vercelService.createSubdomain(user.username);
+    } catch (error) {
+      console.error('Error creando subdominio:', error);
+    }
 
     // 7. Invalidar cache
     await this.cacheInvalidationService.invalidateStoreListings();
