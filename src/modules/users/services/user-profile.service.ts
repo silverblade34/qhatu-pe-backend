@@ -25,37 +25,48 @@ export class UserProfileService {
     }
 
     // Actualizar datos del usuario
+    const data: any = {
+      fullName: updateProfileDto.fullName,
+      phone: updateProfileDto.phone,
+    };
+
+    if (updateProfileDto.username?.trim() !== '') {
+      data.username = updateProfileDto.username;
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        fullName: updateProfileDto.fullName,
-        phone: updateProfileDto.phone,
-      },
+      data,
     });
 
-    // Actualizar perfil de tienda
+    const dataProfile: any = {
+      storeName: updateProfileDto.storeName,
+      bio: updateProfileDto.bio,
+      phone: updateProfileDto.phone,
+      whatsapp: updateProfileDto.whatsapp,
+      categoryId: updateProfileDto.categoryId,
+      metaTitle: updateProfileDto.metaTitle,
+      metaDescription: updateProfileDto.metaDescription,
+      metaKeywords: updateProfileDto.metaKeywords,
+      allowReviews: updateProfileDto.allowReviews,
+      showStock: updateProfileDto.showStock,
+      showSoldOut: updateProfileDto.showSoldOut,
+      requirePhone: updateProfileDto.requirePhone,
+      requireEmail: updateProfileDto.requireEmail,
+      requireAddress: updateProfileDto.requireAddress,
+      primaryColor: updateProfileDto.primaryColor,
+      secondaryColor: updateProfileDto.secondaryColor,
+      favicon: updateProfileDto.favicon,
+    };
+
+    // solo si logo tiene valor
+    if (updateProfileDto.logo?.trim() !== "") {
+      data.logo = updateProfileDto.logo;
+    }
+
     const updatedProfile = await this.prisma.storeProfile.update({
       where: { userId },
-      data: {
-        storeName: updateProfileDto.storeName,
-        bio: updateProfileDto.bio,
-        logo: updateProfileDto.logo,
-        phone: updateProfileDto.phone,
-        whatsapp: updateProfileDto.whatsapp,
-        categoryId: updateProfileDto.categoryId,
-        metaTitle: updateProfileDto.metaTitle,
-        metaDescription: updateProfileDto.metaDescription,
-        metaKeywords: updateProfileDto.metaKeywords,
-        allowReviews: updateProfileDto.allowReviews,
-        showStock: updateProfileDto.showStock,
-        showSoldOut: updateProfileDto.showSoldOut,
-        requirePhone: updateProfileDto.requirePhone,
-        requireEmail: updateProfileDto.requireEmail,
-        requireAddress: updateProfileDto.requireAddress,
-        primaryColor: updateProfileDto.primaryColor,
-        secondaryColor: updateProfileDto.secondaryColor,
-        favicon: updateProfileDto.favicon,
-      },
+      data: dataProfile,
     });
 
     // Actualizar redes sociales

@@ -280,6 +280,7 @@ model StoreProfile {
   storeName      String
   bio            String? @db.Text
   logo           String?
+  profileUrl     String?
   phone          String?
   whatsapp       String?
   primaryColor   String?

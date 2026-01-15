@@ -269,7 +269,7 @@ export class UserRegistrationService {
               storeName: googleUser.fullName,
               bio: `¡Bienvenido a mi tienda! 🛍️`,
               logo: avatarUrl,
-              isActive: false,
+              isActive: true,
             },
           },
         }),

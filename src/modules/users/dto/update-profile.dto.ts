@@ -46,6 +46,11 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
   storeName?: string;
 
@@ -58,7 +63,6 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @IsUrl()
   logo?: string;
 
   @ApiPropertyOptional()
