@@ -61,7 +61,7 @@ export class UserProfileService {
 
     // solo si logo tiene valor
     if (updateProfileDto.logo?.trim() !== "") {
-      data.logo = updateProfileDto.logo;
+      dataProfile.logo = updateProfileDto.logo;
     }
 
     const updatedProfile = await this.prisma.storeProfile.update({

@@ -93,12 +93,6 @@ export class UserRegistrationService {
       },
     });
 
-    try {
-      await this.vercelService.createSubdomain(user.username);
-    } catch (error) {
-      console.error('Error creando subdominio:', error);
-    }
-
     // 7. Invalidar cache
     await this.cacheInvalidationService.invalidateStoreListings();
 
