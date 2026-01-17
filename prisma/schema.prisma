@@ -527,10 +527,11 @@ model Product {
 
   name        String
   description String @db.Text
-  price       Float
 
-  // Precio con descuento (para ofertas)
-  salePrice Float?
+  // Precios
+  price          Float
+  compareAtPrice Float? // precio anterior (oferta)
+  cost           Float? // costo interno
 
   stock             Int @default(0)
   lowStockThreshold Int @default(5)
@@ -596,12 +597,16 @@ model ProductVariant {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  name       String
-  sku        String?
-  price      Float?
-  stock      Int     @default(0)
-  attributes Json
-  isActive   Boolean @default(true)
+  name           String
+  sku            String?
+  
+  price          Float?
+  compareAtPrice Float?
+  cost           Float?
+
+  stock          Int     @default(0)
+  attributes     Json
+  isActive       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

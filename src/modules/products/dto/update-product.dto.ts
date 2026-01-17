@@ -1,9 +1,9 @@
-import { 
-  IsString, 
-  IsNumber, 
-  IsArray, 
-  IsOptional, 
-  Min, 
+import {
+  IsString,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  Min,
   MaxLength,
   IsBoolean,
   ValidateNested,
@@ -25,9 +25,9 @@ export class UpdateProductDto {
   @MaxLength(2000)
   description?: string;
 
-  @ApiPropertyOptional({ 
-    example: 'clxxxxxx', 
-    description: 'ID de la categoría (null para quitar categoría)' 
+  @ApiPropertyOptional({
+    example: 'clxxxxxx',
+    description: 'ID de la categoría (null para quitar categoría)'
   })
   @IsOptional()
   @IsString()
@@ -38,6 +38,25 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @ApiPropertyOptional({ example: 45.00, minimum: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number;
+
+  @ApiPropertyOptional({ example: 45.00, minimum: 0 })
+  @IsNumber()
+  cost?: number;
+
+  @ApiPropertyOptional({
+    example: ['polo', 'anime'],
+    description: 'Caracteristicas cortas del producto',
+    type: [String]
+  })
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @ApiPropertyOptional({ example: 50, minimum: 0 })
   @IsOptional()
@@ -60,7 +79,7 @@ export class UpdateProductDto {
   @IsBoolean()
   isComingSoon?: boolean;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     example: ['https://ejemplo.com/imagen1.jpg'],
     description: 'URLs de las imágenes',
     type: [String]
@@ -70,7 +89,7 @@ export class UpdateProductDto {
   @IsString({ each: true })
   images?: string[];
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     type: [CreateVariantDto],
     description: 'Variantes del producto'
   })

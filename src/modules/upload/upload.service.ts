@@ -98,7 +98,7 @@ export class UploadService {
     username: string,
     plan: SubscriptionPlan = 'BASIC',
   ): Promise<string[]> {
-    return this.uploadFiles(files, 'products', username, plan, true);
+    return this.uploadFiles(files, 'products', username, plan, false);
   }
 
   async uploadFavicon(

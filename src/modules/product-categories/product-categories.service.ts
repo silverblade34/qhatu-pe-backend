@@ -18,45 +18,7 @@ export class ProductCategoriesService {
       orderBy: { order: 'asc' },
     });
 
-    // Si ya tiene categorías, retornarlas
-    if (existingCategories.length > 0) {
-      return existingCategories;
-    }
-
-    // Si no tiene, buscar el rubro de su tienda
-    const storeProfile = await this.prisma.storeProfile.findUnique({
-      where: { userId },
-      include: {
-        category: true,
-      },
-    });
-
-    if (!storeProfile) {
-      throw new NotFoundException('Perfil de tienda no encontrado');
-    }
-
-    // Obtener las categorías por defecto según el rubro
-    const categoryName = storeProfile.category?.name || 'Default';
-    const defaultCategories = 
-      DEFAULT_PRODUCT_CATEGORIES[categoryName] || 
-      DEFAULT_PRODUCT_CATEGORIES.Default;
-
-    // Crear las categorías en batch
-    const createdCategories = await this.prisma.$transaction(
-      defaultCategories.map((category) =>
-        this.prisma.productCategory.create({
-          data: {
-            userId,
-            name: category.name,
-            slug: category.slug,
-            icon: category.icon,
-            order: category.order,
-          },
-        })
-      )
-    );
-
-    return createdCategories;
+    return existingCategories;
   }
 
   /**

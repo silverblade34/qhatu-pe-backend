@@ -31,15 +31,55 @@ export class CreateProductDto {
   @IsString()
   categoryId?: string;
 
-  @ApiProperty({ example: 45.00, minimum: 0 })
+  @ApiPropertyOptional({ 
+    example: 45.00, 
+    minimum: 0,
+    description: 'Precio base del producto (opcional si tiene variantes con precio propio)'
+  })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  price: number;
+  price?: number;
 
-  @ApiProperty({ example: 50, minimum: 0 })
+  @ApiPropertyOptional({ 
+    example: 60.00, 
+    minimum: 0,
+    description: 'Precio de comparación (opcional, heredado por variantes si no especifican el suyo)'
+  })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  stock: number;
+  compareAtPrice?: number;
+
+  @ApiPropertyOptional({ 
+    example: 20.00, 
+    minimum: 0,
+    description: 'Costo del producto (opcional, heredado por variantes si no especifican el suyo)'
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
+
+  @ApiPropertyOptional({
+    example: ['polo', 'anime'],
+    description: 'Características cortas del producto',
+    type: [String]
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional({ 
+    example: 50, 
+    minimum: 0,
+    description: 'Stock inicial (se recalcula automáticamente si hay variantes)'
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stock?: number;
 
   @ApiProperty({
     example: ['https://ejemplo.com/imagen1.jpg', 'https://ejemplo.com/imagen2.jpg'],
@@ -75,4 +115,3 @@ export class CreateProductDto {
   @IsBoolean()
   isComingSoon?: boolean;
 }
-

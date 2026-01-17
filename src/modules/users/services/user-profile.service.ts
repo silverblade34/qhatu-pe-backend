@@ -44,7 +44,6 @@ export class UserProfileService {
       bio: updateProfileDto.bio,
       phone: updateProfileDto.phone,
       whatsapp: updateProfileDto.whatsapp,
-      categoryId: updateProfileDto.categoryId,
       metaTitle: updateProfileDto.metaTitle,
       metaDescription: updateProfileDto.metaDescription,
       metaKeywords: updateProfileDto.metaKeywords,
@@ -62,6 +61,10 @@ export class UserProfileService {
     // solo si logo tiene valor
     if (updateProfileDto.logo?.trim() !== "") {
       dataProfile.logo = updateProfileDto.logo;
+    }
+
+    if (updateProfileDto.categoryId?.trim() !== "") {
+      dataProfile.categoryId = updateProfileDto.categoryId;
     }
 
     const updatedProfile = await this.prisma.storeProfile.update({

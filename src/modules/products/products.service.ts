@@ -41,12 +41,12 @@ export class ProductsService {
       );
     }
 
-    if (createProductDto.images && createProductDto.images.length > 0) {
-      await this.validationService.validateImageLimit(
-        userId,
-        createProductDto.images.length,
-      );
-    }
+    // if (createProductDto.images && createProductDto.images.length > 0) {
+    //   await this.validationService.validateImageLimit(
+    //     userId,
+    //     createProductDto.images.length,
+    //   );
+    // }
 
     // Generar slug único
     const baseSlug = this.slugService.generateSlugFromName(
@@ -65,7 +65,7 @@ export class ProductsService {
     }
 
     // Calcular stock inicial
-    let initialStock = createProductDto.stock;
+    let initialStock = createProductDto.stock ?? 0;
     if (processedVariants && processedVariants.length > 0) {
       initialStock = processedVariants.reduce(
         (sum, variant) => sum + variant.stock,
@@ -82,6 +82,9 @@ export class ProductsService {
         description: createProductDto.description,
         categoryId: createProductDto.categoryId,
         price: createProductDto.price,
+        compareAtPrice: createProductDto.compareAtPrice,
+        cost: createProductDto.cost,
+        tags: createProductDto.tags,
         stock: initialStock,
         isFlashSale: createProductDto.isFlashSale,
         isFeatured: createProductDto.isFeatured,
@@ -98,13 +101,16 @@ export class ProductsService {
       },
     });
 
-    // Crear variantes si existen
+    // Crear variantes si existen (con herencia de precios)
     if (processedVariants && processedVariants.length > 0) {
       const variantsData = processedVariants.map((variant) => ({
         productId: product.id,
         name: variant.name,
         sku: variant.sku,
-        price: variant.price,
+        // Hereda del producto principal si no se especifica
+        price: variant.price ?? createProductDto.price,
+        compareAtPrice: variant.compareAtPrice ?? createProductDto.compareAtPrice,
+        cost: variant.cost ?? createProductDto.cost,
         stock: variant.stock,
         attributes: variant.attributes,
         isActive: true,
@@ -169,7 +175,7 @@ export class ProductsService {
 
     // Procesar variantes
     const productName = updateProductDto.name || product.name;
-    let processedVariants = this.skuService.processVariants(
+    const processedVariants = this.skuService.processVariants(
       productName,
       updateProductDto.variants,
     );
@@ -178,6 +184,20 @@ export class ProductsService {
       this.skuService.validateUniqueSKUs(processedVariants);
     }
 
+    // Recalcular stock si hay variantes
+    let stock = updateProductDto.stock ?? product.stock;
+    if (processedVariants && processedVariants.length > 0) {
+      stock = processedVariants.reduce(
+        (sum, variant) => sum + variant.stock,
+        0,
+      );
+    }
+
+    // Determinar precios finales (usar los existentes si no se actualizan)
+    const finalPrice = updateProductDto.price ?? product.price;
+    const finalCompareAtPrice = updateProductDto.compareAtPrice ?? product.compareAtPrice;
+    const finalCost = updateProductDto.cost ?? product.cost;
+
     // Actualizar producto
     await this.prisma.product.update({
       where: { id: productId },
@@ -185,13 +205,25 @@ export class ProductsService {
         name: updateProductDto.name,
         slug,
         description: updateProductDto.description,
+
         ...(updateProductDto.categoryId !== undefined && {
           category: updateProductDto.categoryId
             ? { connect: { id: updateProductDto.categoryId } }
             : { disconnect: true },
         }),
+
+        // Precios
         price: updateProductDto.price,
-        stock: updateProductDto.stock,
+        compareAtPrice: updateProductDto.compareAtPrice,
+        cost: updateProductDto.cost,
+
+        // Stock
+        stock,
+
+        // Tags
+        tags: updateProductDto.tags,
+
+        // Flags
         isFlashSale: updateProductDto.isFlashSale,
         isFeatured: updateProductDto.isFeatured,
         isComingSoon: updateProductDto.isComingSoon,
@@ -206,18 +238,35 @@ export class ProductsService {
       );
     }
 
-    // Actualizar variantes si se proporcionan
+    // Actualizar variantes si se proporcionan (con herencia)
     if (processedVariants) {
       await this.prisma.productVariant.deleteMany({
         where: { productId },
       });
 
       if (processedVariants.length > 0) {
-        await this.variantsService.createVariants(productId, processedVariants);
+        const variantsData = processedVariants.map((variant) => ({
+          productId,
+          name: variant.name,
+          sku: variant.sku,
+
+          // Hereda del producto principal si no se especifica
+          price: variant.price ?? finalPrice,
+          compareAtPrice: variant.compareAtPrice ?? finalCompareAtPrice,
+          cost: variant.cost ?? finalCost,
+
+          stock: variant.stock,
+          attributes: variant.attributes,
+          isActive: variant.isActive ?? true,
+        }));
+
+        await this.prisma.productVariant.createMany({
+          data: variantsData,
+        });
       }
     }
 
-    return this.queryService.getProductById(userId, product.id);
+    return this.queryService.getProductById(userId, productId);
   }
 
   async delete(userId: string, productId: string) {
@@ -274,6 +323,9 @@ export class ProductsService {
         description: product.description,
         categoryId: product.categoryId,
         price: product.price,
+        compareAtPrice: product.compareAtPrice,
+        cost: product.cost,
+        tags: product.tags,
         stock: product.stock,
         isFlashSale: false,
         isFeatured: false,
@@ -291,6 +343,8 @@ export class ProductsService {
             name: variant.name,
             sku: variant.sku,
             price: variant.price,
+            compareAtPrice: variant.compareAtPrice,
+            cost: variant.cost,
             stock: variant.stock,
             attributes: variant.attributes,
             isActive: variant.isActive,

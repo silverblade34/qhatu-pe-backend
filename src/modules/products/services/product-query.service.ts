@@ -101,7 +101,8 @@ export class ProductQueryService {
           slug: true,
           price: true,
           stock: true,
-          salePrice: true,
+          compareAtPrice: true,
+          tags: true,
           isFlashSale: true,
           isFeatured: true,
           isComingSoon: true,
@@ -119,7 +120,6 @@ export class ProductQueryService {
         orderBy: [
           { isFeatured: 'desc' },
           { isFlashSale: 'desc' },
-          { salePrice: { sort: 'asc', nulls: 'last' } },
           { createdAt: 'desc' },
         ],
         take: filters.limit || 20,

@@ -6,15 +6,29 @@ import { CreateVariantDto } from '../dto/create-variant.dto';
 export class ProductVariantsService {
   constructor(private prisma: PrismaService) { }
 
-  async createVariants(productId: string, variants: CreateVariantDto[]) {
+  /**
+   * Crea variantes heredando precios del producto principal si no se especifican
+   */
+  async createVariants(
+    productId: string, 
+    variants: CreateVariantDto[],
+    productDefaults?: {
+      price?: number;
+      compareAtPrice?: number;
+      cost?: number;
+    }
+  ) {
     const variantsData = variants.map((variant) => ({
       productId,
       name: variant.name,
       sku: variant.sku,
-      price: variant.price,
+      // Hereda del producto principal si no se especifica
+      price: variant.price ?? productDefaults?.price,
+      compareAtPrice: variant.compareAtPrice ?? productDefaults?.compareAtPrice,
+      cost: variant.cost ?? productDefaults?.cost,
       stock: variant.stock,
       attributes: variant.attributes,
-      isActive: true,
+      isActive: variant.isActive ?? true,
     }));
 
     // Crear las variantes
