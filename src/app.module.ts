@@ -27,6 +27,7 @@ import { redisConfig } from './config/redis.config';
 import { RedisModule } from './modules/redis/redis.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { VercelModule } from './modules/vercel/vercel.module';
+import { LiveEventModule } from './modules/live-event/live-event.module';
 import googleAuthConfig from './config/google-auth.config';
 
 @Module({
@@ -60,6 +61,7 @@ import googleAuthConfig from './config/google-auth.config';
     RedisModule,
     BillingModule,
     VercelModule,
+    LiveEventModule,
   ],
 })
 export class AppModule { }
