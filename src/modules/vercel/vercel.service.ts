@@ -20,10 +20,10 @@ export class VercelService {
    * @returns El subdominio creado (ejemplo: "mitienda.qhatupe.com")
    */
   async createSubdomain(username: string): Promise<string> {
-    const subdomain = `${username}.${this.baseDomain}`;
+    const safeUsername = this.normalizeSubdomain(username);
+    const subdomain = `${safeUsername}.${this.baseDomain}`;
 
     try {
-      this.logger.log(`🌐 Creando subdominio: ${subdomain}`);
 
       const response = await fetch(
         `https://api.vercel.com/v10/projects/${this.vercelProjectId}/domains`,
@@ -44,7 +44,6 @@ export class VercelService {
       if (!response.ok) {
         // Si el dominio ya existe, no es un error crítico
         if (data.error?.code === 'domain_already_in_use') {
-          this.logger.warn(`⚠️ El subdominio ${subdomain} ya existe`);
           return subdomain;
         }
 
@@ -54,7 +53,6 @@ export class VercelService {
         );
       }
 
-      this.logger.log(`✅ Subdominio creado exitosamente: ${subdomain}`);
       return subdomain;
 
     } catch (error) {
@@ -63,6 +61,16 @@ export class VercelService {
         'No se pudo crear el subdominio. Intenta nuevamente.'
       );
     }
+  }
+
+  private normalizeSubdomain(username: string): string {
+    return username
+      .toLowerCase()
+      .normalize('NFD')                 // elimina acentos
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]/g, '-')      // todo lo raro → guion
+      .replace(/-+/g, '-')              // múltiples guiones → uno
+      .replace(/^-|-$/g, '');           // no empezar/terminar con guion
   }
 
   /**
@@ -91,7 +99,6 @@ export class VercelService {
         throw new InternalServerErrorException('Error al eliminar subdominio');
       }
 
-      this.logger.log(`✅ Subdominio eliminado: ${subdomain}`);
 
     } catch (error) {
       this.logger.error('Error en deleteSubdomain:', error);

@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Plan } from '@prisma/client';
+import { VercelService } from '../vercel/vercel.service';
 
 @Injectable()
 export class BillingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private vercelService: VercelService) { }
 
   /**
    * Crear registros de facturación para los próximos 12 meses
@@ -213,7 +214,7 @@ export class BillingService {
     expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
 
     // Actualizar usuario
-    await this.prisma.user.update({
+    const updateUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
         plan,
@@ -230,6 +231,20 @@ export class BillingService {
       startDate,
       freeMonths > 0,
     );
+
+    const subdomain = await this.vercelService.createSubdomain(updateUser.username);
+
+    await this.prisma.storeProfile.upsert({
+      where: { userId },
+      update: {
+        profileUrl: `https://${subdomain}`,
+      },
+      create: {
+        userId,
+        storeName: updateUser.username,
+        profileUrl: `https://${subdomain}`,
+      },
+    });
 
     return {
       message: `Plan ${plan} asignado con ${freeMonths} mes(es) gratis`,

@@ -66,6 +66,7 @@ export class StoresService {
               logo: true,
               banners: true,
               badges: true,
+              profileUrl: true,
               category: {
                 select: {
                   id: true,
@@ -111,6 +112,7 @@ export class StoresService {
         category: store.storeProfile?.category,
         isVerified: store.isVerified,
         badges: store.storeProfile?.badges || [],
+        profileUrl: store.storeProfile.profileUrl,
         rating: {
           average: Math.round(avgRating * 10) / 10,
           count: reviewCount,

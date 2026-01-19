@@ -3,7 +3,7 @@ import { PrismaService } from '../../../database/prisma.service';
 
 @Injectable()
 export class UsernameValidationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async checkUsernameAvailability(username: string) {
     if (!username || username.length < 3) {
@@ -13,20 +13,24 @@ export class UsernameValidationService {
       };
     }
 
-    const usernameRegex = /^[a-z0-9_]+$/;
-    if (!usernameRegex.test(username.toLowerCase())) {
+    const normalizedUsername = username.toLowerCase();
+
+    const usernameRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+    if (!usernameRegex.test(normalizedUsername)) {
       return {
         available: false,
-        message: 'Username solo puede contener letras minúsculas, números y guiones bajos',
+        message:
+          'El username solo puede contener letras minúsculas, números y guiones (-). No puede empezar ni terminar con guión.',
       };
     }
 
     const existingUser = await this.prisma.user.findUnique({
-      where: { username: username.toLowerCase() },
+      where: { username: normalizedUsername },
     });
 
     if (existingUser) {
-      const suggestions = await this.generateUsernameSuggestions(username);
+      const suggestions = await this.generateUsernameSuggestions(normalizedUsername);
       return {
         available: false,
         message: 'Este username ya está en uso',
@@ -37,7 +41,7 @@ export class UsernameValidationService {
     return {
       available: true,
       message: '¡Username disponible!',
-      url: `https://www.qhatupe.com/${username.toLowerCase()}`,
+      url: `https://${normalizedUsername}.qhatupe.com`,
     };
   }
 
