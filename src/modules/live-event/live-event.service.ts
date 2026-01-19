@@ -4,7 +4,7 @@ import { CreateLiveEventDto } from './dto/create-live-event.dto';
 
 @Injectable()
 export class LiveEventService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(userId: string, dto: CreateLiveEventDto) {
     // Validar productos
@@ -30,7 +30,7 @@ export class LiveEventService {
     if (dto.scheduledStartAt && dto.scheduledEndAt) {
       const start = new Date(dto.scheduledStartAt);
       const end = new Date(dto.scheduledEndAt);
-      
+
       if (end <= start) {
         throw new BadRequestException('La fecha de fin debe ser posterior a la fecha de inicio');
       }
@@ -69,7 +69,7 @@ export class LiveEventService {
 
     if (!live) return null;
 
-    const duration = live.startedAt 
+    const duration = live.startedAt
       ? Math.floor((Date.now() - live.startedAt.getTime()) / 1000)
       : 0;
 
@@ -100,8 +100,8 @@ export class LiveEventService {
 
     return this.prisma.liveEvent.update({
       where: { id },
-      data: { 
-        status: 'ENDED', 
+      data: {
+        status: 'ENDED',
         endedAt: new Date(),
         pinnedProductId: null,
       },
@@ -114,14 +114,32 @@ export class LiveEventService {
     });
 
     if (!live) throw new NotFoundException('Live no activo');
-    
+
+    // Verificar que el producto existe y pertenece al usuario
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: productId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!product) {
+      throw new BadRequestException('Producto no encontrado o no activo');
+    }
+
+    // Si el producto no está en featuredProductIds, agregarlo
+    let updatedFeaturedIds = live.featuredProductIds;
     if (!live.featuredProductIds.includes(productId)) {
-      throw new BadRequestException('El producto no está en la lista del live');
+      updatedFeaturedIds = [...live.featuredProductIds, productId];
     }
 
     return this.prisma.liveEvent.update({
       where: { id },
-      data: { pinnedProductId: productId },
+      data: {
+        pinnedProductId: productId,
+        featuredProductIds: updatedFeaturedIds,
+      },
     });
   }
 
@@ -139,13 +157,30 @@ export class LiveEventService {
   }
 
   async findAll(userId: string) {
-    return this.prisma.liveEvent.findMany({
+    const events = await this.prisma.liveEvent.findMany({
       where: { userId },
       orderBy: [
         { status: 'asc' }, // LIVE primero
         { scheduledStartAt: 'desc' },
         { createdAt: 'desc' },
       ],
+    });
+
+    // Calcular la duración para eventos LIVE
+    return events.map(event => {
+      let duration = null;
+
+      if (event.status === 'LIVE' && event.startedAt) {
+        const now = new Date();
+        const startedAt = new Date(event.startedAt);
+        const durationMs = now.getTime() - startedAt.getTime();
+        duration = Math.floor(durationMs / 1000);
+      }
+
+      return {
+        ...event,
+        duration,
+      };
     });
   }
 
@@ -165,7 +200,7 @@ export class LiveEventService {
     });
 
     if (!live) throw new NotFoundException('Live no encontrado');
-    
+
     if (live.status === 'LIVE') {
       throw new BadRequestException('Finaliza el live antes de eliminar');
     }
@@ -176,7 +211,7 @@ export class LiveEventService {
   // Método para activar automáticamente lives programados (llamar desde un cron job)
   async activateScheduledLives() {
     const now = new Date();
-    
+
     const scheduledLives = await this.prisma.liveEvent.findMany({
       where: {
         status: 'SCHEDULED',
@@ -197,7 +232,7 @@ export class LiveEventService {
   // Método para finalizar automáticamente lives programados (llamar desde un cron job)
   async endScheduledLives() {
     const now = new Date();
-    
+
     const livesToEnd = await this.prisma.liveEvent.findMany({
       where: {
         status: 'LIVE',
@@ -208,8 +243,8 @@ export class LiveEventService {
     for (const live of livesToEnd) {
       await this.prisma.liveEvent.update({
         where: { id: live.id },
-        data: { 
-          status: 'ENDED', 
+        data: {
+          status: 'ENDED',
           endedAt: now,
           pinnedProductId: null,
         },

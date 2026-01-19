@@ -46,8 +46,7 @@ export class StoresService {
         },
       };
     }
-    console.log("============where============")
-    console.log(JSON.stringify(where, null, 2))
+
     const [stores, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
@@ -180,6 +179,24 @@ export class StoresService {
             endDate: true,
           },
         },
+        liveEvents: {
+          where: {
+            status: 'LIVE',
+          },
+          select: {
+            id: true,
+            title: true,
+            platform: true,
+            liveUrl: true,
+            startedAt: true,
+            featuredProductIds: true,
+            pinnedProductId: true,
+          },
+          orderBy: {
+            startedAt: 'desc',
+          },
+          take: 1, // Solo el más reciente
+        },
       },
     });
 
@@ -227,6 +244,7 @@ export class StoresService {
       },
       recentReviews: user.reviews,
       activeCoupons: user.coupons,
+      activeLive: user.liveEvents[0],
     };
   }
 

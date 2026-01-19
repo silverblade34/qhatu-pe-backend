@@ -36,6 +36,7 @@ export class CouponsController {
   ) {
     const result = await this.couponsService.create(user.id, createCouponDto);
     await this.cacheInvalidation.invalidateCoupons(user.id);
+    await this.cacheInvalidation.invalidateStoreProfile(user.id);
     return result;
   }
 
@@ -48,6 +49,7 @@ export class CouponsController {
   ) {
     const result = await this.couponsService.update(user.id, couponId, updateCouponDto);
     await this.cacheInvalidation.invalidateCoupons(user.id);
+    await this.cacheInvalidation.invalidateStoreProfile(user.id);
     return result;
   }
 
@@ -56,6 +58,7 @@ export class CouponsController {
   async delete(@CurrentUser() user: any, @Param('id') couponId: string) {
     const result = await this.couponsService.delete(user.id, couponId);
     await this.cacheInvalidation.invalidateCoupons(user.id);
+    await this.cacheInvalidation.invalidateStoreProfile(user.id);
     return result;
   }
 
@@ -64,6 +67,7 @@ export class CouponsController {
   async toggleStatus(@CurrentUser() user: any, @Param('id') couponId: string) {
     const result = await this.couponsService.toggleStatus(user.id, couponId);
     await this.cacheInvalidation.invalidateCoupons(user.id);
+    await this.cacheInvalidation.invalidateStoreProfile(user.id);
     return result;
   }
 

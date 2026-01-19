@@ -12,18 +12,24 @@ import { CreateLiveEventDto } from './dto/create-live-event.dto';
 import { PinProductDto } from './dto/pin-product.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { CacheInvalidationService } from '../redis/cache-invalidation.service';
 
 @Controller('live-events')
 export class LiveEventController {
-  constructor(private readonly liveEventService: LiveEventService) {}
+  constructor(
+    private readonly liveEventService: LiveEventService,
+    private readonly cacheInvalidation: CacheInvalidationService,
+  ) { }
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(
+  async create(
     @CurrentUser() user: any,
     @Body() createDto: CreateLiveEventDto,
   ) {
-    return this.liveEventService.create(user.id, createDto);
+    const response = await this.liveEventService.create(user.id, createDto);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 
   @Get()
@@ -42,53 +48,64 @@ export class LiveEventController {
   }
 
   @Get('active/:username')
-  getActive(@Param('username') username: string) {
-    return this.liveEventService.getActiveByUsername(username);
+  async getActive(@Param('username') username: string) {
+    const response = await this.liveEventService.getActiveByUsername(username);
+    return response;
   }
 
   @Post(':id/start')
   @UseGuards(JwtAuthGuard)
-  start(
+  async start(
     @CurrentUser() user: any,
     @Param('id') id: string,
   ) {
-    return this.liveEventService.start(id, user.id);
+    const response = await this.liveEventService.start(id, user.id);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 
   @Post(':id/end')
   @UseGuards(JwtAuthGuard)
-  end(
+  async end(
     @CurrentUser() user: any,
     @Param('id') id: string,
   ) {
-    return this.liveEventService.end(id, user.id);
+    const response = await this.liveEventService.end(id, user.id);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 
   @Post(':id/pin')
   @UseGuards(JwtAuthGuard)
-  pinProduct(
+  async pinProduct(
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() dto: PinProductDto,
   ) {
-    return this.liveEventService.pinProduct(id, user.id, dto.productId);
+    const response = await this.liveEventService.pinProduct(id, user.id, dto.productId);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 
   @Post(':id/unpin')
   @UseGuards(JwtAuthGuard)
-  unpinProduct(
+  async unpinProduct(
     @CurrentUser() user: any,
     @Param('id') id: string,
   ) {
-    return this.liveEventService.unpinProduct(id, user.id);
+    const response = await this.liveEventService.unpinProduct(id, user.id);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  delete(
+  async delete(
     @CurrentUser() user: any,
     @Param('id') id: string,
   ) {
-    return this.liveEventService.delete(id, user.id);
+    const response = await this.liveEventService.delete(id, user.id);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
   }
 }
