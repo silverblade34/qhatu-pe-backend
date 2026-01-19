@@ -108,6 +108,15 @@ export class LiveEventService {
     });
   }
 
+  async updateProducts(products: string[], userId: string, eventId: string) {
+    return this.prisma.liveEvent.update({
+      where: { id: eventId, userId },
+      data: {
+        featuredProductIds: products,
+      }
+    });
+  }
+
   async pinProduct(id: string, userId: string, productId: string) {
     const live = await this.prisma.liveEvent.findFirst({
       where: { id, userId, status: 'LIVE' },

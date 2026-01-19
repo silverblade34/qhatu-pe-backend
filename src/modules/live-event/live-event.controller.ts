@@ -87,6 +87,18 @@ export class LiveEventController {
     return response;
   }
 
+  @Post('/updateProducts')
+  @UseGuards(JwtAuthGuard)
+  async updateProduct(
+    @CurrentUser() user: any,
+    @Body() dto: { products: string[], eventId: string },
+  ) {
+    const response = await this.liveEventService.updateProducts(dto.products, user.id, dto.eventId);
+    await this.cacheInvalidation.invalidateStoreCompletely(user.username);
+    return response;
+  }
+
+
   @Post(':id/unpin')
   @UseGuards(JwtAuthGuard)
   async unpinProduct(
