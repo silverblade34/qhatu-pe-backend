@@ -237,8 +237,7 @@ export class UserRegistrationService {
     );
 
     // Usar foto de Google o generar avatar
-    const avatarUrl = googleUser.picture ||
-      await this.avatarService.generateAndUploadInitialsAvatar(googleUser.fullName);
+    const avatarUrl = await this.avatarService.generateAndUploadInitialsAvatar(googleUser.fullName);
 
     // Determinar rol (por defecto CUSTOMER)
     const role = dto.role || 'CUSTOMER';

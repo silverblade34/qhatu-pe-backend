@@ -12,7 +12,7 @@ export async function seedPlanConfigs() {
       monthlyPrice: 0,
       yearlyPrice: 0,
       maxProducts: 15,
-      maxImagesPerProduct: 3,
+      maxImagesPerProduct: 1,
       maxImageSizeKB: 200,
       imageQuality: 75,
       imageMaxWidth: 1200,
