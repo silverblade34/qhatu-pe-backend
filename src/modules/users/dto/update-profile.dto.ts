@@ -68,7 +68,6 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @IsUrl()
   favicon?: string;
 
   @ApiPropertyOptional()

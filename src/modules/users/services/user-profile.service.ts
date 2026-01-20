@@ -9,6 +9,7 @@ export class UserProfileService {
   ) { }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    console.log("===================1")
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -66,7 +67,8 @@ export class UserProfileService {
     if (updateProfileDto.categoryId?.trim() !== "") {
       dataProfile.categoryId = updateProfileDto.categoryId;
     }
-
+    console.log("===================2")
+    console.log(dataProfile)
     const updatedProfile = await this.prisma.storeProfile.update({
       where: { userId },
       data: dataProfile,
