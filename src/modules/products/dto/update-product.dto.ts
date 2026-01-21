@@ -46,7 +46,9 @@ export class UpdateProductDto {
   compareAtPrice?: number;
 
   @ApiPropertyOptional({ example: 45.00, minimum: 0 })
+  @IsOptional()
   @IsNumber()
+  @Min(0)
   cost?: number;
 
   @ApiPropertyOptional({

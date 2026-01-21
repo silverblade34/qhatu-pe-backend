@@ -38,7 +38,6 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    console.log("=============0")
     const result = await this.profileService.updateProfile(user.id, updateProfileDto);
 
     await this.cacheInvalidation.invalidateStoreCompletely(user.username);
