@@ -671,19 +671,46 @@ export class OrdersService {
 
   private async generateOrderNumber(): Promise<string> {
     const date = new Date();
-    const year = date.getFullYear();
+    const year = date.getFullYear().toString().slice(-2); // Últimos 2 dígitos del año
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
 
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 10;
 
     while (attempts < maxAttempts) {
       try {
-        const timestamp = Date.now().toString().slice(-8);
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-        const orderNumber = `ORD-${year}${month}${day}-${timestamp}${random}`;
+        // Obtener el último número de orden del día
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 
+        const lastOrder = await this.prisma.order.findFirst({
+          where: {
+            createdAt: {
+              gte: startOfDay,
+              lt: endOfDay,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          select: {
+            orderNumber: true,
+          },
+        });
+
+        let sequence = 1;
+
+        if (lastOrder) {
+          // Extraer el número de secuencia del último pedido
+          const lastSequence = parseInt(lastOrder.orderNumber.split('-').pop() || '0');
+          sequence = lastSequence + 1;
+        }
+
+        const sequenceStr = sequence.toString().padStart(4, '0');
+        const orderNumber = `ORD-${year}${month}${day}-${sequenceStr}`;
+
+        // Verificar que no existe (por si acaso)
         const exists = await this.prisma.order.findUnique({
           where: { orderNumber },
           select: { id: true },
