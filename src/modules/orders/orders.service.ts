@@ -40,7 +40,7 @@ export class OrdersService {
             storeProfile: {
               select: {
                 storeName: true,
-                phone: true,
+                whatsapp: true,
               },
             },
           },
@@ -121,7 +121,7 @@ export class OrdersService {
     const total = subtotal - discount;
     const sellerUsername = products[0].user.username;
     const storeName = products[0].user.storeProfile?.storeName || sellerUsername;
-    const storePhone = products[0].user.storeProfile?.phone;
+    const storePhone = products[0].user.storeProfile?.whatsapp;
 
     // Construir mensaje de WhatsApp
     let message = `¡Hola *${storeName}*! Me interesa:\n\n`;
@@ -200,7 +200,7 @@ export class OrdersService {
             storeProfile: {
               select: {
                 storeName: true,
-                phone: true,
+                whatsapp: true,
               },
             },
           },
@@ -376,7 +376,7 @@ export class OrdersService {
     // Resto del código para generar mensaje de WhatsApp...
     const sellerUsername = products[0].user.username;
     const storeName = products[0].user.storeProfile?.storeName || sellerUsername;
-    const storePhone = products[0].user.storeProfile?.phone;
+    const storePhone = products[0].user.storeProfile?.whatsapp;
 
     let message = `*Pedido Confirmado #${orderNumber}*\n\n`;
     message += `¡Hola *${storeName}*! Tu pedido ha sido registrado:\n\n`;
