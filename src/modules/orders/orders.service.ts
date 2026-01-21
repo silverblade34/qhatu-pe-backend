@@ -127,36 +127,36 @@ export class OrdersService {
     let message = `¡Hola *${storeName}*! Me interesa:\n\n`;
 
     itemsDetails.forEach((item, index) => {
-      message += `📦 *Producto ${index + 1}:* ${item.name}\n`;
+      message += `*Producto ${index + 1}:* ${item.name}\n`;
       if (item.variant) {
-        message += `   📏 Variante: ${item.variant}\n`;
+        message += `   Variante: ${item.variant}\n`;
       }
-      message += `   💰 Precio: S/. ${item.price.toFixed(2)}\n`;
-      message += `   🔢 Cantidad: ${item.quantity}\n`;
-      message += `   💵 Subtotal: S/. ${item.subtotalItem.toFixed(2)}\n\n`;
+      message += `   Precio: S/. ${item.price.toFixed(2)}\n`;
+      message += `   Cantidad: ${item.quantity}\n`;
+      message += `   Subtotal: S/. ${item.subtotalItem.toFixed(2)}\n\n`;
     });
 
     message += `━━━━━━━━━━━━━━━━\n`;
-    message += `💰 *Subtotal:* S/. ${subtotal.toFixed(2)}\n`;
+    message += `*Subtotal:* S/. ${subtotal.toFixed(2)}\n`;
 
     if (couponInfo) {
-      message += `🎟️ *Cupón ${couponInfo.code}:* -S/. ${couponInfo.discount.toFixed(2)}\n`;
+      message += `*Cupón ${couponInfo.code}:* -S/. ${couponInfo.discount.toFixed(2)}\n`;
     }
 
-    message += `✨ *TOTAL:* S/. ${total.toFixed(2)}\n`;
+    message += `*TOTAL:* S/. ${total.toFixed(2)}\n`;
     message += `━━━━━━━━━━━━━━━━\n\n`;
 
     if (customerInfo) {
-      message += `👤 *Cliente:* ${customerInfo.name}\n`;
+      message += `*Cliente:* ${customerInfo.name}\n`;
       if (customerInfo.phone) {
-        message += `📱 *Teléfono:* ${customerInfo.phone}\n`;
+        message += `*Teléfono:* ${customerInfo.phone}\n`;
       }
       if (customerInfo.address) {
-        message += `📍 *Dirección:* ${customerInfo.address}\n`;
+        message += `*Dirección:* ${customerInfo.address}\n`;
       }
     }
 
-    message += `\n🌐 Ver productos: https://www.qhatupe.com/${sellerUsername}`;
+    message += `\nVer productos: https://www.qhatupe.com/${sellerUsername}`;
 
     // Generar link de WhatsApp
     const whatsappNumber = storePhone || ''; // El teléfono debe incluirse
@@ -378,40 +378,40 @@ export class OrdersService {
     const storeName = products[0].user.storeProfile?.storeName || sellerUsername;
     const storePhone = products[0].user.storeProfile?.phone;
 
-    let message = `✅ *Pedido Confirmado #${orderNumber}*\n\n`;
+    let message = `*Pedido Confirmado #${orderNumber}*\n\n`;
     message += `¡Hola *${storeName}*! Tu pedido ha sido registrado:\n\n`;
 
     itemsDetails.forEach((item, index) => {
-      message += `📦 *Producto ${index + 1}:* ${item.name}\n`;
+      message += `*Producto ${index + 1}:* ${item.name}\n`;
       if (item.variant) {
-        message += `   📏 Variante: ${item.variant}\n`;
+        message += `   Variante: ${item.variant}\n`;
       }
-      message += `   💰 Precio: S/. ${item.price.toFixed(2)}\n`;
-      message += `   🔢 Cantidad: ${item.quantity}\n`;
-      message += `   💵 Subtotal: S/. ${item.subtotalItem.toFixed(2)}\n\n`;
+      message += `   Precio: S/. ${item.price.toFixed(2)}\n`;
+      message += `   Cantidad: ${item.quantity}\n`;
+      message += `   Subtotal: S/. ${item.subtotalItem.toFixed(2)}\n\n`;
     });
 
     message += `━━━━━━━━━━━━━━━━\n`;
-    message += `💰 *Subtotal:* S/. ${subtotal.toFixed(2)}\n`;
+    message += `*Subtotal:* S/. ${subtotal.toFixed(2)}\n`;
 
     if (couponInfo) {
-      message += `🎟️ *Cupón ${couponInfo.code}:* -S/. ${couponInfo.discount.toFixed(2)}\n`;
+      message += `*Cupón ${couponInfo.code}:* -S/. ${couponInfo.discount.toFixed(2)}\n`;
     }
 
-    message += `✨ *TOTAL:* S/. ${total.toFixed(2)}\n`;
+    message += `*TOTAL:* S/. ${total.toFixed(2)}\n`;
     message += `━━━━━━━━━━━━━━━━\n\n`;
 
     if (customerInfo) {
-      message += `👤 *Cliente:* ${customerInfo.name}\n`;
+      message += `*Cliente:* ${customerInfo.name}\n`;
       if (customerInfo.phone) {
-        message += `📱 *Teléfono:* ${customerInfo.phone}\n`;
+        message += `*Teléfono:* ${customerInfo.phone}\n`;
       }
       if (customerInfo.address) {
-        message += `📍 *Dirección:* ${customerInfo.address}\n`;
+        message += `*Dirección:* ${customerInfo.address}\n`;
       }
     }
 
-    message += `\n🌐 Ver productos: https://www.qhatupe.com/${sellerUsername}`;
+    message += `\nVer productos: https://www.qhatupe.com/${sellerUsername}`;
 
     const whatsappNumber = storePhone || '';
     const encodedMessage = encodeURIComponent(message);
