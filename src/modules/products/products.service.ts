@@ -6,13 +6,14 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { FilterProductDto } from './dto/filter-product.dto';
+import { FilterProductSellerDto } from './dto/filter-product-seller.dto';
 import { ProductVariantsService } from './services/product-variants.service';
 import { ProductSlugService } from './services/product-slug.service';
 import { ProductSkuService } from './services/product-sku.service';
 import { ProductValidationService } from './services/product-validation.service';
 import { ProductQueryService } from './services/product-query.service';
 import { ProductImageService } from './services/product-image.service';
+import { FilterProductDto } from './dto/filter-product-customer.dto';
 
 @Injectable()
 export class ProductsService {
@@ -374,7 +375,7 @@ export class ProductsService {
     return this.queryService.getPublicProducts(username, filters);
   }
 
-  async getSellerProducts(userId: string, filters: FilterProductDto) {
+  async getSellerProducts(userId: string, filters: FilterProductSellerDto) {
     return this.queryService.getSellerProducts(userId, filters);
   }
 

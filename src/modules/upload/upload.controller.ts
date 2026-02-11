@@ -14,17 +14,30 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) { }
+  constructor(private readonly uploadService: UploadService) {}
 
-  /**
-   * Sube imágenes de productos (máximo 5 por request)
-   */
+  private sanitizeFilename(filename: string): string {
+    return filename
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s.-]/g, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase();
+  }
+
+  private sanitizeFiles(files: Express.Multer.File[]): Express.Multer.File[] {
+    return files.map(file => ({
+      ...file,
+      originalname: this.sanitizeFilename(file.originalname),
+    }));
+  }
+
   @Post('product-images')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FilesInterceptor('images', 5, {
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+        fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
@@ -32,7 +45,7 @@ export class UploadController {
           'image/jpg',
           'image/png',
           'image/webp',
-          'image/heic', // iPhone usa HEIC
+          'image/heic',
         ];
 
         if (!allowedMimes.includes(file.mimetype)) {
@@ -51,12 +64,18 @@ export class UploadController {
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: any,
   ) {
+    console.log('Usuario que sube las imágenes:', user.username);
+    console.log('Archivos originales:', files.map(f => f.originalname));
+
     if (!files || files.length === 0) {
       throw new BadRequestException('Debes subir al menos una imagen');
     }
 
+    const sanitizedFiles = this.sanitizeFiles(files);
+    console.log('Archivos sanitizados:', sanitizedFiles.map(f => f.originalname));
+
     const urls = await this.uploadService.uploadProductImages(
-      files,
+      sanitizedFiles,
       user.username,
       user.plan || 'BASIC',
     );
@@ -69,9 +88,6 @@ export class UploadController {
     };
   }
 
-  /**
-   * Sube avatar de usuario
-   */
   @Post('avatar')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
@@ -108,7 +124,12 @@ export class UploadController {
       throw new BadRequestException('No se ha proporcionado ningún archivo');
     }
 
-    const url = await this.uploadService.uploadAvatar(file, user.username);
+    const sanitizedFile = {
+      ...file,
+      originalname: this.sanitizeFilename(file.originalname),
+    };
+
+    const url = await this.uploadService.uploadAvatar(sanitizedFile, user.username);
 
     return {
       success: true,
@@ -117,10 +138,6 @@ export class UploadController {
     };
   }
 
-
-  /**
- * Sube banner de usuario
- */
   @Post('banner')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
@@ -157,7 +174,12 @@ export class UploadController {
       throw new BadRequestException('No se ha proporcionado ningún archivo');
     }
 
-    const url = await this.uploadService.uploadBanner(file, user.username);
+    const sanitizedFile = {
+      ...file,
+      originalname: this.sanitizeFilename(file.originalname),
+    };
+
+    const url = await this.uploadService.uploadBanner(sanitizedFile, user.username);
 
     return {
       success: true,
@@ -166,9 +188,6 @@ export class UploadController {
     };
   }
 
-    /**
- * Sube favicon de usuario
- */
   @Post('favicon')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
@@ -177,15 +196,11 @@ export class UploadController {
         fileSize: 1 * 1024 * 1024,
       },
       fileFilter: (req, file, cb) => {
-        const allowedMimes = [
-          'image/png',
-        ];
+        const allowedMimes = ['image/png'];
 
         if (!allowedMimes.includes(file.mimetype)) {
           return cb(
-            new BadRequestException(
-              'Solo se permiten imágenes PNG'
-            ),
+            new BadRequestException('Solo se permiten imágenes PNG'),
             false,
           );
         }
@@ -201,7 +216,12 @@ export class UploadController {
       throw new BadRequestException('No se ha proporcionado ningún archivo');
     }
 
-    const url = await this.uploadService.uploadFavicon(file, user.username);
+    const sanitizedFile = {
+      ...file,
+      originalname: this.sanitizeFilename(file.originalname),
+    };
+
+    const url = await this.uploadService.uploadFavicon(sanitizedFile, user.username);
 
     return {
       success: true,

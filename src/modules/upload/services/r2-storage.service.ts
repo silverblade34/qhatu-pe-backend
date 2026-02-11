@@ -25,6 +25,13 @@ interface UploadMetadata {
 export class R2StorageService {
   constructor(private config: ConfigService) {}
 
+  private sanitizeMetadata(value: string): string {
+    return value
+      .replace(/[^\x20-\x7E]/g, '')
+      .replace(/[\r\n\t]/g, ' ')
+      .trim();
+  }
+
   async uploadToR2(
     buffer: Buffer,
     directory: DirectoryType,
@@ -47,10 +54,10 @@ export class R2StorageService {
     const publicUrl = bucketConfig.publicUrl;
 
     const metadata: UploadMetadata = {
-      originalName: originalFile.originalname,
+      originalName: this.sanitizeMetadata(originalFile.originalname),
       originalSize: originalFile.size.toString(),
       optimizedSize: buffer.length.toString(),
-      uploadedBy: username,
+      uploadedBy: this.sanitizeMetadata(username),
       uploadedAt: new Date().toISOString(),
       plan: plan,
       isTemporary: isTemporary.toString(),
@@ -63,17 +70,21 @@ export class R2StorageService {
       ContentType: `image/${format}`,
       ContentDisposition: 'inline',
       CacheControl: isTemporary
-        ? 'public, max-age=3600' // 1 hora
-        : 'public, max-age=31536000, immutable', // 1 año
+        ? 'public, max-age=3600'
+        : 'public, max-age=31536000, immutable',
       ...(isTemporary && {
-        Expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hora
+        Expires: new Date(Date.now() + 60 * 60 * 1000),
       }),
       Metadata: metadata as any,
     });
 
-    await r2Client.send(command);
-
-    return `${publicUrl}/${fileName}`;
+    try {
+      await r2Client.send(command);
+      return `${publicUrl}/${fileName}`;
+    } catch (error) {
+      console.error('Error subiendo a R2:', error);
+      throw error;
+    }
   }
 
   async confirmPermanentFiles(
@@ -97,7 +108,6 @@ export class R2StorageService {
 
         const permanentKey = tempKey.replace('temp/', '');
 
-        // Copiar a ubicación permanente
         const copyCommand = new CopyObjectCommand({
           Bucket: bucketName,
           CopySource: `${bucketName}/${tempKey}`,
@@ -109,13 +119,12 @@ export class R2StorageService {
           Metadata: {
             isTemporary: 'false',
             confirmedAt: new Date().toISOString(),
-            confirmedBy: username,
+            confirmedBy: this.sanitizeMetadata(username),
           },
         });
 
         await r2Client.send(copyCommand);
 
-        // Eliminar temporal
         const deleteCommand = new DeleteObjectCommand({
           Bucket: bucketName,
           Key: tempKey,
@@ -142,7 +151,6 @@ export class R2StorageService {
     isTemporary: boolean = false,
   ): string {
     const baseName = this.normalizeFilename(originalName);
-    //const uniqueSuffix = this.shortId();
     const folder = isTemporary ? 'temp' : username;
     return `${directory}/${folder}/${baseName}.${extension}`;
   }

@@ -9,7 +9,7 @@ export enum AvailabilityFilter {
   FLASH_SALE = 'FLASH_SALE',
 }
 
-export class FilterProductDto {
+export class FilterProductSellerDto {
   @ApiPropertyOptional({ description: 'ID de categoría' })
   @IsOptional()
   @IsString()
