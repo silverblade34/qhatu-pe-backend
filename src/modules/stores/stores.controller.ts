@@ -16,7 +16,7 @@ import { CacheKey } from '../../common/decorators/cache-key.decorator';
 export class StoresController {
   constructor(
     private readonly storesService: StoresService,
-  ) {}
+  ) { }
 
   // BÚSQUEDA DE TIENDAS (CON CACHE)
   @Public()
@@ -102,8 +102,17 @@ export class StoresController {
     });
   }
 
-  // PERFIL DE TIENDA (CON CACHE - muy consultado)
-  // IMPORTANTE: Este debe ir AL FINAL porque :username puede conflictuar con las rutas anteriores
+  // CATEGORÍAS DE PRODUCTOS DE LA TIENDA (CON CACHE)
+  @Public()
+  @Get('product-categories/:username')
+  @UseInterceptors(HttpCacheInterceptor)
+  @CacheKey('store_product_categories')
+  @ApiOperation({ summary: 'Obtener categorías de productos de una tienda' })
+  async getStoreProductCategories(@Param('username') username: string) {
+    return this.storesService.getStoreProductCategories(username);
+  }
+
+  // PERFIL DE TIENDA (CON CACHE)
   @Public()
   @Get(':username')
   @UseInterceptors(HttpCacheInterceptor)

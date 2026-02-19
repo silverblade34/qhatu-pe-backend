@@ -250,6 +250,35 @@ export class StoresService {
     };
   }
 
+  async getStoreProductCategories(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username: username },
+      select: {
+        id: true,
+        storeProfile: {
+          select: {
+            isActive: true,
+          },
+        },
+      },
+    });
+
+    if (!user || !user.storeProfile?.isActive) {
+      throw new NotFoundException('Tienda no encontrada o no está activa');
+    }
+
+    const categories = await this.prisma.productCategory.findMany({
+      where: {
+        userId: user.id,
+      },
+      select: {
+        name: true,
+        slug: true,
+      }
+    });
+    return categories;
+  }
+
   async getFeaturedStores(limit: number) {
     const stores = await this.prisma.user.findMany({
       where: {
