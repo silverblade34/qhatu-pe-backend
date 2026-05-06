@@ -1,0 +1,232 @@
+{
+    "success": true,
+    "data": {
+        "nIdInterno": "E000075830",
+        "nEstado": 1,
+        "origenRegistroCliente": {
+            "nIdOrigenRegistro": 2,
+            "sNombre": "Smart",
+            "nEstado": 1
+        },
+        "tipoCliente": {
+            "nIdTipoCliente": 2,
+            "sNombre": "Estrella",
+            "sCodigoFormato": "E",
+            "sCodNetSuite": "3",
+            "nEstado": 1
+        },
+        "centroLabores": {
+            "nIdCentroLabores": 1,
+            "sNombre": "Iquitos",
+            "nEstado": 1
+        },
+        "dtFechaCreacion": "2026-03-11T15:18:08.714Z",
+        "dtFechaActualizacion": "2026-03-11T15:18:13.547Z",
+        "nIdExterno": null,
+        "sCodNetSuite": 243032,
+        "nIdCliente": 87881,
+        "infoCliente": {
+            "sNombre": "ANGEL ALEXANDER",
+            "sApellidos": "CHERO DIOSES",
+            "dtFechaNacimiento": "2000-02-02",
+            "estadoCivil": {
+                "nIdEstadoCivil": 1,
+                "sNombre": "Soltero",
+                "nEstado": 1
+            },
+            "genero": {
+                "nIdGenero": 1,
+                "sNombre": "Msculino",
+                "nEstado": 1
+            },
+            "documento": {
+                "nIdDocumento": 87881,
+                "sNumeroDocumento": "40095643",
+                "sPaisEmisor": "PERÚ",
+                "tipoDocumento": {
+                    "nIdTipoDocumento": 2,
+                    "sNombre": "DNI",
+                    "nEstado": 1,
+                    "sCodNetSuite": "2"
+                },
+                "tipoPersona": {
+                    "nIdTipoPersona": 1,
+                    "sNombre": "Jurídico",
+                    "nEstado": 1,
+                    "sCodNetSuite": "2"
+                }
+            },
+            "direccionCliente": {
+                "nIdDireccionCliente": 87881,
+                "sDireccion": "av prueba 123",
+                "sDireccionNetsuiteId": "245524",
+                "nLatitud": 0,
+                "nLongitud": 0,
+                "ubigeo": {
+                    "nIdUbigeo": 1502,
+                    "sNombre": "Ate",
+                    "sCodigo": "150103",
+                    "nIdUbigeoPadre": 152,
+                    "sUbigeoNetsuiteId": "1268",
+                    "sUbigeoResumen": "Lima: Lima: Ate"
+                }
+            },
+            "contactoCliente": {
+                "nIdContacto": 87881,
+                "sEmail": "prueba8503@gmail.com",
+                "sTelefono": "900876123",
+                "sTelefonoAlternativo": "",
+                "sCorreoResponsablePagoFactura": ""
+            },
+            "cliente": {
+                "nIdCliente": 87881,
+                "nIdExterno": null,
+                "nIdInterno": "E000075830",
+                "sCodNetSuite": null,
+                "nEstado": 1,
+                "dtFechaCreacion": "2026-03-11T15:18:08.714Z",
+                "dtFechaActualizacion": "2026-03-11T15:18:08.714Z",
+                "origenRegistroCliente": {
+                    "nIdOrigenRegistro": 2,
+                    "sNombre": "Smart",
+                    "nEstado": 1
+                },
+                "tipoCliente": {
+                    "nIdTipoCliente": 2,
+                    "sNombre": "Estrella",
+                    "sCodigoFormato": "E",
+                    "sCodNetSuite": "3",
+                    "nEstado": 1
+                },
+                "centroLabores": {
+                    "nIdCentroLabores": 1,
+                    "sNombre": "Iquitos",
+                    "nEstado": 1
+                }
+            },
+            "sRazonSocial": null,
+            "sCdTrabajo": null,
+            "nIdInformacionCliente": 87870
+        },
+        "interlocutores": [
+            {
+                "sCodInterlocutor": "DIR-01",
+                "nEstado": 1,
+                "nOrden": 1,
+                "nPadreId": 76,
+                "cliente": {
+                    "nIdCliente": 87881,
+                    "nIdExterno": null,
+                    "nIdInterno": "E000075830",
+                    "sCodNetSuite": null,
+                    "nEstado": 1,
+                    "dtFechaCreacion": "2026-03-11T15:18:08.714Z",
+                    "dtFechaActualizacion": "2026-03-11T15:18:08.714Z",
+                    "origenRegistroCliente": {
+                        "nIdOrigenRegistro": 2,
+                        "sNombre": "Smart",
+                        "nEstado": 1
+                    },
+                    "tipoCliente": {
+                        "nIdTipoCliente": 2,
+                        "sNombre": "Estrella",
+                        "sCodigoFormato": "E",
+                        "sCodNetSuite": "3",
+                        "nEstado": 1
+                    },
+                    "centroLabores": {
+                        "nIdCentroLabores": 1,
+                        "sNombre": "Iquitos",
+                        "nEstado": 1
+                    },
+                    "infoCliente": {
+                        "nIdInformacionCliente": 87870,
+                        "sNombre": "ANGEL ALEXANDER",
+                        "sApellidos": "CHERO DIOSES",
+                        "sRazonSocial": null,
+                        "sCdTrabajo": null,
+                        "dtFechaNacimiento": "2000-02-02",
+                        "estadoCivil": {
+                            "nIdEstadoCivil": 1,
+                            "sNombre": "Soltero",
+                            "nEstado": 1
+                        },
+                        "genero": {
+                            "nIdGenero": 1,
+                            "sNombre": "Msculino",
+                            "nEstado": 1
+                        },
+                        "documento": {
+                            "nIdDocumento": 87881,
+                            "sNumeroDocumento": "40095643",
+                            "sPaisEmisor": "PERÚ",
+                            "tipoDocumento": {
+                                "nIdTipoDocumento": 2,
+                                "sNombre": "DNI",
+                                "nEstado": 1,
+                                "sCodNetSuite": "2"
+                            },
+                            "tipoPersona": {
+                                "nIdTipoPersona": 1,
+                                "sNombre": "Jurídico",
+                                "nEstado": 1,
+                                "sCodNetSuite": "2"
+                            }
+                        },
+                        "direccionCliente": {
+                            "nIdDireccionCliente": 87881,
+                            "sDireccion": "av prueba 123",
+                            "sDireccionNetsuiteId": null,
+                            "nLatitud": 0,
+                            "nLongitud": 0,
+                            "ubigeo": {
+                                "nIdUbigeo": 1502,
+                                "sNombre": "Ate",
+                                "sCodigo": "150103",
+                                "nIdUbigeoPadre": 152,
+                                "sUbigeoNetsuiteId": "1268",
+                                "sUbigeoResumen": "Lima: Lima: Ate"
+                            }
+                        },
+                        "contactoCliente": {
+                            "nIdContacto": 87881,
+                            "sEmail": "prueba8503@gmail.com",
+                            "sTelefono": "900876123",
+                            "sTelefonoAlternativo": "",
+                            "sCorreoResponsablePagoFactura": ""
+                        },
+                        "cliente": {
+                            "nIdCliente": 87881,
+                            "nIdExterno": null,
+                            "nIdInterno": "E000075830",
+                            "sCodNetSuite": null,
+                            "nEstado": 1,
+                            "dtFechaCreacion": "2026-03-11T15:18:08.714Z",
+                            "dtFechaActualizacion": "2026-03-11T15:18:08.714Z",
+                            "origenRegistroCliente": {
+                                "nIdOrigenRegistro": 2,
+                                "sNombre": "Smart",
+                                "nEstado": 1
+                            },
+                            "tipoCliente": {
+                                "nIdTipoCliente": 2,
+                                "sNombre": "Estrella",
+                                "sCodigoFormato": "E",
+                                "sCodNetSuite": "3",
+                                "nEstado": 1
+                            },
+                            "centroLabores": {
+                                "nIdCentroLabores": 1,
+                                "sNombre": "Iquitos",
+                                "nEstado": 1
+                            }
+                        }
+                    }
+                },
+                "dtFechaCreacion": "2026-03-11T15:18:08.743Z",
+                "dtFechaActualizacion": null,
+                "nIdInterlocutor": 87976
+            }
+        ]
+    }
+}
