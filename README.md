@@ -1,99 +1,152 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# <img src="https://nestjs.com/img/logo-small.svg" alt="NestJS Logo" width="48" align="center" /> QhatuPE — Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **Motor API REST de alto rendimiento y arquitectura robusta para la gestión de catálogos e-commerce conversacionales.**
+> Edificado sobre NestJS, TypeScript, Prisma ORM, WebSockets, y servicios en la nube para garantizar una experiencia en tiempo real y escalable.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🏗️ Descripción General y Arquitectura
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+El backend de **QhatuPE** es una API estructurada bajo principios de diseño de software empresarial, utilizando la inyección de dependencias modular de **NestJS** y tipado estricto en **TypeScript**. La plataforma está diseñada para soportar picos masivos de tráfico provenientes de lives de redes sociales (TikTok/Instagram) mediante caching agresivo, colas y notificaciones asíncronas bidireccionales en tiempo real.
 
-## Project setup
+---
 
-```bash
-$ pnpm install
-```
+## 🚀 Capacidades y Módulos de Ingeniería
 
-## Compile and run the project
+El núcleo de la API abarca soluciones de alto nivel para resaltar capacidades de arquitectura y desarrollo de sistemas distribuidos:
 
-```bash
-# development
-$ pnpm run start
+### 🎮 1. Eventos en Tiempo Real (Live Sales & WebSockets)
+- **Canales Bidireccionales:** Implementado con `@nestjs/websockets` y **Socket.io** para emitir alertas instantáneas a los vendedores cuando un cliente realiza un pedido.
+- **Cupones de Live Dinámicos:** Los vendedores pueden activar cupones temporizados en vivo que se reflejan al instante en la tienda de todos los usuarios conectados sin recargar la web.
 
-# watch mode
-$ pnpm run start:dev
+### 🖼️ 2. Pipeline de Procesamiento de Imágenes Avanzado
+- **Conversión de Formatos Móviles:** Integración con `heic-convert` para transformar automáticamente fotografías tomadas con dispositivos iOS (HEIC/HEIF) directamente en el servidor.
+- **Optimización Dinámica con Sharp:** Procesamiento asíncrono y redimensionado de imágenes mediante **Sharp**, reduciendo pesos de carga y optimizando resoluciones para la web (WebP/JPEG) antes de subirlas al almacenamiento.
+- **Almacenamiento Seguro (AWS S3):** Carga y almacenamiento en la nube usando presigned URLs para cargas seguras directamente desde el cliente.
 
-# production mode
-$ pnpm run start:prod
-```
+### ⚡ 3. Estrategia de Caching & Rate Limiting (Redis)
+- **Cache Manager y Redis:** Caching de alto rendimiento para endpoints de lectura frecuente (catálogos de productos públicos y configuraciones de tiendas) reduciendo la latencia de respuesta a menos de 10ms.
+- **Limitación de Peticiones:** Protección del servidor contra ataques de denegación de servicio (DoS) o fuerza bruta mediante limitadores de tasa integrados y respaldados en memoria caché.
 
-## Run tests
+### 🔐 4. Autenticación Robusta y Modular
+- **Estrategias con Passport:** Implementación de flujos mixtos que abarcan:
+  - **Estrategia Local:** Registro y acceso tradicional usando contraseñas de alta seguridad encriptadas mediante `bcrypt`.
+  - **Estrategia JWT:** Generación y validación de tokens JSON Web para mantener sesiones seguras y stateless.
+  - **Estrategia Google OAuth:** Autenticación fluida con Google Auth Library y Passport-Google-OAuth20.
+- **Flujos de Recuperación:** Servicios de reestablecimiento de contraseña mediante hashes firmados con tiempos de expiración controlados.
 
-```bash
-# unit tests
-$ pnpm run test
+### ✉️ 5. Notificaciones Transaccionales Multi-proveedor
+- **AWS SES & Resend:** Integración flexible con Amazon Simple Email Service (SES) y la plataforma **Resend** para despachar correos transaccionales rápidos de confirmación de registro, facturación y estados de pedidos.
+- **Generador de Avatares Dinámicos:** Módulo interactivo conectado con la biblioteca de **DiceBear Core**, permitiendo autogenerar avatares vectoriales SVG personalizados basados en las iniciales o perfiles de los usuarios registrados.
 
-# e2e tests
-$ pnpm run test:e2e
+### 🗃️ 6. Capa de Datos Relacionales (Prisma ORM & PostgreSQL)
+- **Modelamiento de Datos:** Base de datos relacional PostgreSQL gestionada elegantemente con **Prisma ORM**, garantizando transacciones seguras (ACID) y consultas optimizadas.
+- **Indexación Inteligente:** Índices colocados estratégicamente en columnas críticas (`store_id`, `email`, `user_id`, `order_index`) descritos en `schema.sql` para maximizar el rendimiento.
+- **Control de Semillas (Seeders):** Scripts automatizados para poblar base de datos iniciales en desarrollo y producción (`seed:categories`, `seed:plans`, `seed:all`).
 
-# test coverage
-$ pnpm run test:cov
-```
+---
 
-## Deployment
+## 🛠️ Stack Tecnológico & Skills Clave
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Este proyecto demuestra conocimientos avanzados de infraestructura, seguridad y diseño de APIs:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **NestJS Core:** Módulos, Controladores, Servicios, Pipes de validación global y Guards de autorización.
+- **Prisma Client:** Consultas complejas, relaciones jerárquicas y migraciones robustas.
+- **Docker & Docker Compose:** Contenerización de la base de datos PostgreSQL, servicio Redis y la API en contenedores aislados y listos para producción.
+- **Programación de Tareas (Cron Jobs):** `@nestjs/schedule` para ejecutar limpiezas de cupones vencidos y reportes automáticos de ventas en el backend.
+- **Documentación Interactiva (Swagger):** Integración completa de OpenAPI mediante `@nestjs/swagger` para proporcionar un sandbox interactivo de pruebas de endpoints.
+- **Compresión y Seguridad:** Implementación de `compression` Gzip/Brotli y cabeceras de protección **Helmet**.
+
+---
+
+## 📁 Estructura del Proyecto Backend
 
 ```bash
-$ pnpm install -g mau
-$ mau deploy
+qhatu-pe-backend/
+├── prisma/               # Archivos de base de datos relacional
+│   ├── schema.prisma     # Definición del esquema de datos y relaciones de Prisma
+│   └── seed.ts           # Script semilla principal para poblar tablas iniciales
+├── src/                  # Directorio de código fuente principal
+│   ├── common/           # Decoradores, interceptores globales y filtros de excepciones
+│   ├── config/           # Configuraciones de entorno centralizadas (AWS, Redis, JWT)
+│   ├── database/         # Módulo y Servicio del cliente Prisma
+│   ├── health/           # Monitoreo de salud del servidor (Liveness / Readiness)
+│   ├── jobs/             # Tareas programadas periódicas (Cron Jobs)
+│   ├── modules/          # Módulos de lógica de negocio (19 sub-servicios)
+│   │   ├── auth/         # Autenticación, JWT, Passport, Google OAuth
+│   │   ├── avatar/       # Generador dinámico de avatares con Dicebear
+│   │   ├── upload/       # Procesamiento de imágenes (Sharp/HEIC) y subidas a S3
+│   │   ├── live-event/   # WebSocket Gateways para notificaciones en vivo
+│   │   ├── redis/        # Servicio cliente Redis para caching
+│   │   ├── orders/       # Lógica del ciclo de vida del pedido
+│   │   └── mail/         # Integración de emails (AWS SES / Resend)
+│   └── main.ts           # Punto de entrada de la aplicación, configuración de CORS, Helmet y Pipes
+├── Dockerfile            # Construcción de imágenes de producción
+└── docker-compose.yml    # Orquestador de desarrollo para base de datos y caché local
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 🚀 Instalación y Despliegue en Desarrollo
 
-Check out a few resources that may come in handy when working with NestJS:
+1. **Clonar el proyecto:**
+   ```bash
+   git clone https://github.com/tu-usuario/qhatu-pe-backend.git
+   cd qhatu-pe-backend
+   ```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+2. **Instalar Dependencias:**
+   ```bash
+   pnpm install
+   ```
 
-## Support
+3. **Configurar el entorno (`.env`):**
+   Crea un archivo `.env` tomando como referencia las credenciales de conexión del servidor:
+   ```env
+   DATABASE_URL="postgresql://postgres:password@localhost:5432/qhatupe_db?schema=public"
+   REDIS_URL="redis://localhost:6379"
+   JWT_SECRET="mi_secreto_super_seguro"
+   AWS_ACCESS_KEY_ID="tu_key_aws"
+   AWS_SECRET_ACCESS_KEY="tu_secret_aws"
+   AWS_S3_BUCKET_NAME="tu_bucket_s3"
+   ```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+4. **Levantar base de datos y Redis locales con Docker:**
+   ```bash
+   docker-compose up -d
+   ```
 
-## Stay in touch
+5. **Aplicar Migraciones de Base de Datos & Poblar Datos Semilla:**
+   ```bash
+   pnpm prisma migrate dev
+   pnpm run prisma:seed
+   ```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+6. **Iniciar servidor en desarrollo (Watch mode):**
+   ```bash
+   pnpm run start:dev
+   ```
+   La API estará activa en `http://localhost:8000/api` y la documentación Swagger disponible en `http://localhost:8000/api/docs`.
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 🧪 Pruebas Automatizadas
+
+El backend incluye un riguroso juego de pruebas integradas:
+
+```bash
+# Pruebas unitarias y de integración
+pnpm run test
+
+# Pruebas E2E (End-to-End)
+pnpm run test:e2e
+
+# Reporte de cobertura de código
+pnpm run test:cov
+```
+
+---
+
+## 📝 Licencia
+
+Este proyecto de backend es propietario y forma parte del ecosistema de QhatuPE. Todos los derechos reservados © 2026.
